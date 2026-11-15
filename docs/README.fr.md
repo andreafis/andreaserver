@@ -18,6 +18,14 @@
 
 Commandes rapides : `A` bannière · `D` Shell · `M` moniteur · `K` arrêter Jellyfin · `k` redémarrer Jellyfin · `R` redémarrage · `backup-server` sauvegarde de la configuration.
 
+![La bannière de connexion](img/banner.png)
+
+![La console web](img/console.png)
+
+![Le Shell texte](img/shell.png)
+
+*Captures du vrai serveur dont ce projet est issu. Les adresses IP, le nom de la ville et les listes de domaines Pi-hole ont été masqués.*
+
 ## Installation
 
 1. Installez [DietPi](https://dietpi.com) (Debian) sur le mini PC et terminez le premier démarrage.

@@ -18,6 +18,14 @@
 
 Comandi rapidi: `A` banner · `D` Shell · `M` monitor · `K` ferma Jellyfin · `k` riavvia Jellyfin · `R` riavvio · `backup-server` backup della configurazione.
 
+![Il banner di accesso](img/banner.png)
+
+![La console web](img/console.png)
+
+![La Shell testuale](img/shell.png)
+
+*Immagini dal server vero da cui nasce il progetto. Indirizzi IP, nome della città ed elenchi dei domini di Pi-hole sono stati mascherati.*
+
 ## Installazione
 
 1. Installa [DietPi](https://dietpi.com) (Debian) sul mini PC e completa il primo avvio.

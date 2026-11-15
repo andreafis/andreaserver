@@ -29,31 +29,17 @@ bash <(curl -fsSL https://raw.githubusercontent.com/andreafis/andreaserver/main/
 
 **It says hello.** Log in over SSH and, instead of a wall of text, you get a compact panel: uptime, CPU temperature, memory, your LAN and public IP, how full each disk is, when the last backup ran, how many ads Pi-hole has blocked today, and who is connected right now — labelled as LAN, WireGuard or OpenVPN.
 
+![The login banner in a terminal](docs/img/banner.png)
+
 **It knows the weather.** The banner and the dashboard show the forecast for your town, the chance of rain in the next six hours, and the wind called by its traditional Mediterranean name — *Tramontana*, *Scirocco*, *Maestrale* — instead of a compass bearing.
 
 **A dashboard you can leave open on a tablet.** `http://your-server:8088` shows live charts for CPU, temperature, memory, network and disk activity, plus services, running processes, Pi-hole numbers and connected VPN clients. Password-protected buttons let you restart Jellyfin, refresh the blocklists or run a backup from your phone. It answers only to your home network and your VPN, uses nothing but Python's standard library, and is capped at 80 MB of memory.
 
+![The web console in a browser](docs/img/console.png)
+
 **A 1991-style desktop over SSH.** Type `D` and the terminal becomes a windowed environment in the spirit of the old DOS file managers: a folder tree, a file list, a launcher for your programs and a live list of services. Click, double-click and scroll with the mouse; browse, view, edit, copy, move and delete files; start, stop and read the logs of a service — all without remembering a single command.
 
-```
- myserver                       AndreaServer  ─  Shell                15/11/2026  13:02
-  File   Vista   Servizi   Utilità   Aiuto
- Dischi: [/] [media] [backup]                                     Libero 2.1G di 7.0G
-┌──── Albero cartelle ─────┐╔═══════════════════════ /root ════════════════════════╗
-│[-] /                     █║ ..                            <DIR>                  ║
-│├─[+] etc                 █║ scripts                       <DIR>  15-07-26 10:17  ║
-│├─[+] home                █║ notes.txt                     14.8K  15-07-26 10:54  ║
-│├─[+] mnt                 ░║ install.log                     632  06-08-26 09:59  ║
-│├─[+] root                ░║                                                      ║
-└──────────────────────────┘╚══════════════════════════════════════════════════════╝
-┌─────────────── Programmi ────────────────┐┌────────────── Servizi ───────────────┐
-│ Monitor attività (btop)                  ││ ● Jellyfin (media)            attivo │
-│ Midnight Commander                       ││ ● Pi-hole (DNS)               attivo │
-│ Linea di comando (bash)                  ││ ● Samba (condivisioni)        attivo │
-│ Spazio su disco                          ││ ● VPN OpenVPN                 attivo │
-└──────────────────────────────────────────┘└──────────────────────────────────────┘
- F9=Menu  F1=Aiuto  F3=Vedi  F4=Modif  F5=Copia  F6=Sposta  F7=Crea  F8=Elim  F10=Esci
-```
+![The text Shell in a terminal](docs/img/shell.png)
 
 **One-letter commands**, for when you just want it done:
 
@@ -69,6 +55,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/andreafis/andreaserver/main/
 **It is kind to old hardware.** Logs live in RAM to spare the SD card or eMMC. The media disk's health is checked only when the disk is already awake, so it is never spun up just to be asked how it feels. Pi-hole keeps two days of history instead of three months.
 
 **It backs itself up.** Every Sunday at 4 a.m. the configuration, the list of installed software and a Pi-hole export are packed into one archive on the second disk, with plain-language restore instructions inside. The last ten are kept.
+
+*Screenshots are from the real server this project was born on. IP addresses, the town name and the Pi-hole domain lists have been masked.*
 
 ## Install
 

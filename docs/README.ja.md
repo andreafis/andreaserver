@@ -18,6 +18,14 @@
 
 ショートカット: `A` バナー · `D` Shell · `M` モニター · `K` Jellyfin 停止 · `k` Jellyfin 再起動 · `R` 再起動 · `backup-server` 設定のバックアップ。
 
+![ログインバナー](img/banner.png)
+
+![ウェブコンソール](img/console.png)
+
+![テキスト Shell](img/shell.png)
+
+*このプロジェクトのもとになった実際のサーバーの画面です。IP アドレス、都市名、Pi-hole のドメイン一覧は伏せてあります。*
+
 ## インストール
 
 1. ミニ PC に [DietPi](https://dietpi.com)（Debian）をインストールし、初回起動を完了します。
