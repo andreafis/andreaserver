@@ -26,6 +26,38 @@ Kurzbefehle: `A` Banner · `D` Shell · `M` Monitor · `K` Jellyfin stoppen · `
 
 *Bilder vom echten Server, aus dem dieses Projekt entstanden ist. IP-Adressen, Ortsname und die Pi-hole-Domainlisten wurden unkenntlich gemacht.*
 
+## Die Maschine
+
+All das läuft auf einem **Dell Wyse 3040**, einem handtellergroßen Thin Client, der gebraucht so viel kostet wie eine Pizza. Er hat keinen Lüfter und keine beweglichen Teile, ist also völlig lautlos, und verbraucht so wenig Strom, dass er das ganze Jahr laufen kann.
+
+| | |
+|---|---|
+| Modell | Dell Wyse 3040 thin client |
+| Prozessor | Intel Atom x5-Z8350 · 4 cores · 1.44 GHz (burst 1.92 GHz) |
+| Arbeitsspeicher | 2 GB DDR3L 1600, soldered |
+| Interner Speicher | 8 GB eMMC, soldered |
+| Grafik | Intel HD Graphics 400 |
+| Netzwerk | Gigabit Ethernet |
+| Anschlüsse | 4 × USB (1 × USB 3), 2 × DisplayPort |
+| Kühlung | keine: lüfterlos, keine beweglichen Teile |
+| Stromversorgung | 5 V / 3 A (15 W) Netzteil |
+| Größe und Gewicht | about 10 × 10 × 3 cm, 240 g |
+| System | DietPi 10.8 · Debian 12 · Linux 6.1 |
+
+**Wie er sich schlägt, gemessen am echten Server** mit Pi-hole, Jellyfin, Samba, beiden VPNs und der Konsole in Betrieb:
+
+- Belegter Arbeitsspeicher: etwa 800 MB von 1,9 GB
+- Systemlaufwerk: 4,6 GB von 7,1 GB belegt
+- CPU-Temperatur: rund 49 °C, ohne Lüfter
+- Laufende Prozesse: etwa 120
+- Kaltstart bis betriebsbereit: etwa 50 Sekunden
+
+Filme und Musik liegen auf einer 2-TB-USB-Festplatte, Backups auf einem 64-GB-USB-Stick, denn die internen 8 GB reichen nur für das System.
+
+Die ehrliche Grenze: Der Atom spielt Filme im Originalformat mühelos ab, aber das Umwandeln von Video in Echtzeit (Transcoding) ist langsam. Nutze Player, die deine Dateien direkt abspielen können.
+
+AndreaServer sollte auf jedem von DietPi unterstützten x86_64-Rechner laufen; dies ist einfach der, auf dem es entstanden ist.
+
 ## Installation
 
 1. [DietPi](https://dietpi.com) (Debian) auf dem Mini-PC installieren und den ersten Start abschließen.

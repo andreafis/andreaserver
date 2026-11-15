@@ -4,7 +4,7 @@
 
 🇬🇧 English · [🇮🇹 Italiano](docs/README.it.md) · [🇩🇪 Deutsch](docs/README.de.md) · [🇫🇷 Français](docs/README.fr.md) · [🇯🇵 日本語](docs/README.ja.md)
 
-AndreaServer takes a cheap mini PC (the kind with a 2-watt Atom CPU and 2 GB of RAM), a fresh [DietPi](https://dietpi.com) install and a couple of USB disks, and turns them into the little box in the corner that quietly looks after the whole house: no ads, your own Netflix, a shared drive, and a private tunnel home from anywhere.
+AndreaServer takes a cheap mini PC (a second-hand Dell Wyse 3040 thin client with an Atom CPU and 2 GB of RAM), a fresh [DietPi](https://dietpi.com) install and a couple of USB disks, and turns them into the little box in the corner that quietly looks after the whole house: no ads, your own Netflix, a shared drive, and a private tunnel home from anywhere.
 
 It started as one real server, tuned over months. This repository is that server with everything personal taken out, so you can build your own.
 
@@ -57,6 +57,38 @@ bash <(curl -fsSL https://raw.githubusercontent.com/andreafis/andreaserver/main/
 **It backs itself up.** Every Sunday at 4 a.m. the configuration, the list of installed software and a Pi-hole export are packed into one archive on the second disk, with plain-language restore instructions inside. The last ten are kept.
 
 *Screenshots are from the real server this project was born on. IP addresses, the town name and the Pi-hole domain lists have been masked.*
+
+## The machine
+
+All of this runs on a **Dell Wyse 3040**, a palm-sized thin client that sells second-hand for the price of a pizza. It has no fan and no moving parts, so it is completely silent, and it sips so little power that it can stay on all year.
+
+| | |
+|---|---|
+| Model | Dell Wyse 3040 thin client |
+| Processor | Intel Atom x5-Z8350 · 4 cores · 1.44 GHz (burst 1.92 GHz) |
+| Memory | 2 GB DDR3L 1600, soldered |
+| Internal storage | 8 GB eMMC, soldered |
+| Graphics | Intel HD Graphics 400 |
+| Network | Gigabit Ethernet |
+| Ports | 4 × USB (1 × USB 3), 2 × DisplayPort |
+| Cooling | none: fanless, no moving parts |
+| Power | 5 V / 3 A (15 W) adapter |
+| Size and weight | about 10 × 10 × 3 cm, 240 g |
+| System | DietPi 10.8 · Debian 12 · Linux 6.1 |
+
+**How it copes, measured on the real server** with Pi-hole, Jellyfin, Samba, both VPNs and the dashboard all running:
+
+- Memory in use: about 800 MB of 1.9 GB
+- System disk: 4.6 GB used of 7.1 GB
+- CPU temperature: around 49 °C, with no fan
+- Running processes: about 120
+- Cold boot to ready: about 50 seconds
+
+Films and music live on a 2 TB USB hard disk, and backups go to a 64 GB USB stick, because the internal 8 GB holds only the system.
+
+The honest limit: the Atom plays films in their original format without effort, but converting video on the fly (transcoding) is slow. Use players that can handle your files directly.
+
+AndreaServer should run on any x86_64 machine supported by DietPi; this is simply the one it was built and tuned on.
 
 ## Install
 

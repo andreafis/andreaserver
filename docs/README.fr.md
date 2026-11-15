@@ -26,6 +26,38 @@ Commandes rapides : `A` bannière · `D` Shell · `M` moniteur · `K` arrêter J
 
 *Captures du vrai serveur dont ce projet est issu. Les adresses IP, le nom de la ville et les listes de domaines Pi-hole ont été masqués.*
 
+## La machine
+
+Tout cela tourne sur un **Dell Wyse 3040**, un client léger qui tient dans la paume et se trouve d'occasion pour le prix d'une pizza. Il n'a ni ventilateur ni pièce mobile : il est donc totalement silencieux, et consomme si peu qu'il peut rester allumé toute l'année.
+
+| | |
+|---|---|
+| Modèle | Dell Wyse 3040 thin client |
+| Processeur | Intel Atom x5-Z8350 · 4 cores · 1.44 GHz (burst 1.92 GHz) |
+| Mémoire | 2 GB DDR3L 1600, soldered |
+| Stockage interne | 8 GB eMMC, soldered |
+| Graphique | Intel HD Graphics 400 |
+| Réseau | Gigabit Ethernet |
+| Ports | 4 × USB (1 × USB 3), 2 × DisplayPort |
+| Refroidissement | aucun : sans ventilateur, aucune pièce mobile |
+| Alimentation | 5 V / 3 A (15 W) adaptateur |
+| Taille et poids | about 10 × 10 × 3 cm, 240 g |
+| Système | DietPi 10.8 · Debian 12 · Linux 6.1 |
+
+**Comment il s'en sort, mesuré sur le vrai serveur** avec Pi-hole, Jellyfin, Samba, les deux VPN et la console en service :
+
+- Mémoire utilisée : environ 800 Mo sur 1,9 Go
+- Disque système : 4,6 Go utilisés sur 7,1 Go
+- Température du processeur : autour de 49 °C, sans ventilateur
+- Processus actifs : environ 120
+- Démarrage à froid : environ 50 secondes
+
+Les films et la musique sont sur un disque USB de 2 To et les sauvegardes sur une clé USB de 64 Go, car les 8 Go internes ne suffisent que pour le système.
+
+La limite, dite franchement : l'Atom lit les films dans leur format d'origine sans effort, mais la conversion vidéo à la volée (transcodage) est lente. Utilisez des lecteurs capables d'ouvrir directement vos fichiers.
+
+AndreaServer devrait fonctionner sur toute machine x86_64 prise en charge par DietPi ; celle-ci est simplement celle sur laquelle il est né.
+
 ## Installation
 
 1. Installez [DietPi](https://dietpi.com) (Debian) sur le mini PC et terminez le premier démarrage.
