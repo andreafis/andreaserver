@@ -28,6 +28,10 @@ Kurzbefehle: `A` Banner · `D` Shell · `M` Monitor · `K` Jellyfin stoppen · `
 
 ## Die Maschine
 
+<p align="center"><img src="img/wyse3040.jpg" alt="Der Thin Client Dell Wyse 3040" width="420"></p>
+
+<p align="center"><sub>Produktfoto © Dell Inc., nur zur Identifizierung gezeigt; es fällt nicht unter die Lizenz dieses Projekts.</sub></p>
+
 All das läuft auf einem **Dell Wyse 3040**, einem handtellergroßen Thin Client, der gebraucht so viel kostet wie eine Pizza. Er hat keinen Lüfter und keine beweglichen Teile, ist also völlig lautlos, und verbraucht so wenig Strom, dass er das ganze Jahr laufen kann.
 
 | | |

@@ -28,6 +28,10 @@ Commandes rapides : `A` bannière · `D` Shell · `M` moniteur · `K` arrêter J
 
 ## La machine
 
+<p align="center"><img src="img/wyse3040.jpg" alt="Le client léger Dell Wyse 3040" width="420"></p>
+
+<p align="center"><sub>Photo du produit © Dell Inc., montrée uniquement pour identifier la machine ; elle n'est pas couverte par la licence de ce projet.</sub></p>
+
 Tout cela tourne sur un **Dell Wyse 3040**, un client léger qui tient dans la paume et se trouve d'occasion pour le prix d'une pizza. Il n'a ni ventilateur ni pièce mobile : il est donc totalement silencieux, et consomme si peu qu'il peut rester allumé toute l'année.
 
 | | |

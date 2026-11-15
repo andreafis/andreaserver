@@ -60,6 +60,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/andreafis/andreaserver/main/
 
 ## The machine
 
+<p align="center"><img src="docs/img/wyse3040.jpg" alt="The Dell Wyse 3040 thin client" width="420"></p>
+
+<p align="center"><sub>Product photo © Dell Inc., shown for identification only; it is not covered by this project's license.</sub></p>
+
 All of this runs on a **Dell Wyse 3040**, a palm-sized thin client that sells second-hand for the price of a pizza. It has no fan and no moving parts, so it is completely silent, and it sips so little power that it can stay on all year.
 
 | | |

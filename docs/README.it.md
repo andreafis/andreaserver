@@ -28,6 +28,10 @@ Comandi rapidi: `A` banner · `D` Shell · `M` monitor · `K` ferma Jellyfin · 
 
 ## La macchina
 
+<p align="center"><img src="img/wyse3040.jpg" alt="Il thin client Dell Wyse 3040" width="420"></p>
+
+<p align="center"><sub>Foto del prodotto © Dell Inc., mostrata solo per identificare la macchina; non rientra nella licenza di questo progetto.</sub></p>
+
 Tutto questo gira su un **Dell Wyse 3040**, un thin client grande come un palmo che usato costa quanto una pizza. Non ha ventola né parti in movimento, quindi è completamente silenzioso, e consuma così poco che può restare acceso tutto l'anno.
 
 | | |
