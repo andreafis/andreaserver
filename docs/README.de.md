@@ -2,7 +2,7 @@
 
 **Der kleine Heimserver.** AndreaServer macht aus einem Mini-PC mit DietPi mit einem einzigen Befehl einen vollständigen Heimserver.
 
-[🇮🇹 Italiano](../README.md) · [🇬🇧 English](README.en.md) · 🇩🇪 Deutsch · [🇫🇷 Français](README.fr.md) · [🇯🇵 日本語](README.ja.md)
+[🇮🇹 Italiano](README.it.md) · [🇬🇧 English](../README.md) · 🇩🇪 Deutsch · [🇫🇷 Français](README.fr.md) · [🇯🇵 日本語](README.ja.md)
 
 ## Was installiert wird
 

@@ -2,7 +2,7 @@
 
 **小さなホームサーバー。** AndreaServer は、DietPi を入れたミニ PC をコマンドひとつで本格的なホームサーバーに変えます。
 
-[🇮🇹 Italiano](../README.md) · [🇬🇧 English](README.en.md) · [🇩🇪 Deutsch](README.de.md) · [🇫🇷 Français](README.fr.md) · 🇯🇵 日本語
+[🇮🇹 Italiano](README.it.md) · [🇬🇧 English](../README.md) · [🇩🇪 Deutsch](README.de.md) · [🇫🇷 Français](README.fr.md) · 🇯🇵 日本語
 
 ## インストールされるもの
 

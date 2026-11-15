@@ -1,48 +1,97 @@
 # AndreaServer
 
-**Il piccolo server di casa.** AndreaServer trasforma un mini PC con DietPi in un server domestico completo con un solo comando.
+**A whole home server on a tiny, silent PC — set up with one command.**
 
-🇮🇹 Italiano · [🇬🇧 English](docs/README.en.md) · [🇩🇪 Deutsch](docs/README.de.md) · [🇫🇷 Français](docs/README.fr.md) · [🇯🇵 日本語](docs/README.ja.md)
+🇬🇧 English · [🇮🇹 Italiano](docs/README.it.md) · [🇩🇪 Deutsch](docs/README.de.md) · [🇫🇷 Français](docs/README.fr.md) · [🇯🇵 日本語](docs/README.ja.md)
 
-## Cosa installa
+AndreaServer takes a cheap mini PC (the kind with a 2-watt Atom CPU and 2 GB of RAM), a fresh [DietPi](https://dietpi.com) install and a couple of USB disks, and turns them into the little box in the corner that quietly looks after the whole house: no ads, your own Netflix, a shared drive, and a private tunnel home from anywhere.
 
-| Cosa | A cosa serve | Dove |
-|---|---|---|
-| Pi-hole | blocca la pubblicità su tutta la rete | `http://IP/admin` |
-| Jellyfin | film e musica su TV, telefono, browser | `http://IP:8096` |
-| Samba | cartella condivisa in rete | `\\IP\Media` |
-| WireGuard e OpenVPN | accesso a casa da fuori | `dietpi-software` |
-| Console web | stato del server, grafici, pulsanti | `http://IP:8088` |
-| Banner | riepilogo del server a ogni accesso | al login |
-| Shell testuale | finestre, menu e mouse nel terminale | comando `D` |
-
-Comandi rapidi: `A` banner · `D` Shell · `M` monitor · `K` ferma Jellyfin · `k` riavvia Jellyfin · `R` riavvio · `backup-server` backup della configurazione.
-
-## Installazione
-
-1. Installa [DietPi](https://dietpi.com) (Debian) sul mini PC e completa il primo avvio.
-2. Collega e monta i dischi esterni con `dietpi-drive_manager`.
-3. Da root:
+It started as one real server, tuned over months. This repository is that server with everything personal taken out, so you can build your own.
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/andreafis/andreaserver/main/bootstrap.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/andreafis/andreaserver/main/bootstrap.sh) --lang en
 ```
 
-La procedura chiede lingua, dischi, città per il meteo, nome della cartella condivisa e password. Durante l'installazione dei programmi DietPi può fare qualche domanda (per esempio per le VPN).
+## What it does for you
 
-Senza domande: copia `andreaserver.conf.example`, compilalo e lancia `./install.sh --config mio.conf`.
+| | What you get | Powered by |
+|---|---|---|
+| 🚫 | **No more ads** on every phone, TV and laptop in the house, with nothing to install on them | Pi-hole |
+| 🎬 | **Your own streaming service**: films, series and music from your disk, on any screen | Jellyfin |
+| 📁 | **A shared folder** every computer on the network can open | Samba |
+| 🔐 | **A private way home**: reach your files and films from a café or a hotel | WireGuard, OpenVPN |
+| 📊 | **A live dashboard** in the browser, with charts and one-click buttons | web console |
+| 👋 | **A status report** that greets you every time you log in | login banner |
+| 🖱️ | **A retro point-and-click desktop** in the terminal, mouse included | text Shell |
+| 💾 | **A weekly backup** of the whole configuration, kept automatically | `backup-server` |
 
-## Cosa NON contiene
+## The nice little things
 
-Nel repository non ci sono chiavi, password, token, indirizzi di casa né dati personali. Chiavi VPN, password e certificati vengono creati nuovi su ogni macchina. La configurazione locale sta in `/etc/andreaserver/andreaserver.conf` e non va pubblicata. Prima di ogni pubblicazione: `tools/check-secrets.sh`.
+**It says hello.** Log in over SSH and, instead of a wall of text, you get a compact panel: uptime, CPU temperature, memory, your LAN and public IP, how full each disk is, when the last backup ran, how many ads Pi-hole has blocked today, and who is connected right now — labelled as LAN, WireGuard or OpenVPN.
 
-## Da sapere
+**It knows the weather.** The banner and the dashboard show the forecast for your town, the chance of rain in the next six hours, and the wind called by its traditional Mediterranean name — *Tramontana*, *Scirocco*, *Maestrale* — instead of a compass bearing.
 
-- Ricavato da un server x86_64 con DietPi 10 (Debian 12). L'installatore non è ancora stato provato su una macchina pulita. Serve DietPi: su Debian puro l'installatore si ferma.
-- La cartella condivisa può essere aperta senza password (scelta durante l'installazione): va bene solo su una rete di casa fidata.
-- Banner, console web e Shell sono per ora in italiano; installatore e documentazione sono in cinque lingue.
-- Aggiornare i file di AndreaServer dopo un `git pull`: `/opt/andreaserver/install.sh --files-only`.
+**A dashboard you can leave open on a tablet.** `http://your-server:8088` shows live charts for CPU, temperature, memory, network and disk activity, plus services, running processes, Pi-hole numbers and connected VPN clients. Password-protected buttons let you restart Jellyfin, refresh the blocklists or run a backup from your phone. It answers only to your home network and your VPN, uses nothing but Python's standard library, and is capped at 80 MB of memory.
 
-## Licenza
+**A 1991-style desktop over SSH.** Type `D` and the terminal becomes a windowed environment in the spirit of the old DOS file managers: a folder tree, a file list, a launcher for your programs and a live list of services. Click, double-click and scroll with the mouse; browse, view, edit, copy, move and delete files; start, stop and read the logs of a service — all without remembering a single command.
+
+```
+ myserver                       AndreaServer  ─  Shell                15/11/2026  13:02
+  File   Vista   Servizi   Utilità   Aiuto
+ Dischi: [/] [media] [backup]                                     Libero 2.1G di 7.0G
+┌──── Albero cartelle ─────┐╔═══════════════════════ /root ════════════════════════╗
+│[-] /                     █║ ..                            <DIR>                  ║
+│├─[+] etc                 █║ scripts                       <DIR>  15-07-26 10:17  ║
+│├─[+] home                █║ notes.txt                     14.8K  15-07-26 10:54  ║
+│├─[+] mnt                 ░║ install.log                     632  06-08-26 09:59  ║
+│├─[+] root                ░║                                                      ║
+└──────────────────────────┘╚══════════════════════════════════════════════════════╝
+┌─────────────── Programmi ────────────────┐┌────────────── Servizi ───────────────┐
+│ Monitor attività (btop)                  ││ ● Jellyfin (media)            attivo │
+│ Midnight Commander                       ││ ● Pi-hole (DNS)               attivo │
+│ Linea di comando (bash)                  ││ ● Samba (condivisioni)        attivo │
+│ Spazio su disco                          ││ ● VPN OpenVPN                 attivo │
+└──────────────────────────────────────────┘└──────────────────────────────────────┘
+ F9=Menu  F1=Aiuto  F3=Vedi  F4=Modif  F5=Copia  F6=Sposta  F7=Crea  F8=Elim  F10=Esci
+```
+
+**One-letter commands**, for when you just want it done:
+
+| Key | Does |
+|---|---|
+| `A` | show the status banner again |
+| `D` | open the text Shell |
+| `M` | activity monitor (btop) |
+| `K` | stop Jellyfin (to let the disk sleep) |
+| `k` | restart Jellyfin |
+| `R` | emergency reboot, with a confirmation |
+
+**It is kind to old hardware.** Logs live in RAM to spare the SD card or eMMC. The media disk's health is checked only when the disk is already awake, so it is never spun up just to be asked how it feels. Pi-hole keeps two days of history instead of three months.
+
+**It backs itself up.** Every Sunday at 4 a.m. the configuration, the list of installed software and a Pi-hole export are packed into one archive on the second disk, with plain-language restore instructions inside. The last ten are kept.
+
+## Install
+
+1. Install [DietPi](https://dietpi.com) on the mini PC and finish its first boot.
+2. Plug in your disks and mount them with `dietpi-drive_manager`.
+3. As root, run the command at the top of this page.
+
+A short wizard asks which disk holds your media, where backups should go, your town (for the weather), the name of the shared folder and a couple of passwords. DietPi may ask a few questions of its own while it installs the software, for example about the VPNs.
+
+The wizard speaks **English, Italian, German, French and Japanese**. For an unattended install, copy `andreaserver.conf.example`, fill it in and run `./install.sh --config my.conf`.
+
+## Nothing personal inside
+
+This repository contains no keys, passwords, tokens, home addresses or personal data. VPN keys, certificates and passwords are generated fresh on every machine; everything specific to your home is asked during setup and stored only in `/etc/andreaserver/andreaserver.conf` on your server. `tools/check-secrets.sh` scans the repository before every publish.
+
+## Honest notes
+
+- **Not yet tested on a clean machine.** It was derived from a working x86_64 server running DietPi 10 (Debian 12). Expect rough edges on the first installs, and please open an issue when you find one.
+- **DietPi is required.** On plain Debian the installer stops.
+- **The banner, dashboard and Shell are in Italian for now.** The installer and the documentation are translated.
+- **The shared folder can be opened without a password** if you choose so during setup. That is fine on a home network you trust, and nowhere else.
+- To refresh AndreaServer's files after a `git pull`: `/opt/andreaserver/install.sh --files-only`.
+
+## License
 
 [MIT](LICENSE)
