@@ -43,3 +43,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/andreafis/andreaserver/main/
 - バナー、ウェブコンソール、Shell は今のところイタリア語のみです。インストーラーとドキュメントは 5 言語に対応しています。
 - 日本語の画面は SSH 接続のターミナルで表示してください。本体に直接つないだ画面では文字化けします。
 - `git pull` のあとに AndreaServer のファイルを更新するには: `/opt/andreaserver/install.sh --files-only`
+
+## ライセンス
+
+[MIT](../LICENSE)

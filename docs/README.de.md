@@ -42,3 +42,7 @@ Das Repository enthält keine Schlüssel, Passwörter, Tokens, Heimadressen oder
 - Die Freigabe kann ohne Passwort geöffnet werden (Auswahl bei der Einrichtung): nur für ein vertrauenswürdiges Heimnetz geeignet.
 - Banner, Web-Konsole und Shell gibt es vorerst nur auf Italienisch; Installer und Dokumentation liegen in fünf Sprachen vor.
 - AndreaServer-Dateien nach einem `git pull` aktualisieren: `/opt/andreaserver/install.sh --files-only`.
+
+## Lizenz
+
+[MIT](../LICENSE)

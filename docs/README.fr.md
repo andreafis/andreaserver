@@ -42,3 +42,7 @@ Le dépôt ne contient ni clés, ni mots de passe, ni jetons, ni adresses du dom
 - Le dossier partagé peut être ouvert sans mot de passe (choix à l'installation) : à réserver à un réseau domestique de confiance.
 - La bannière, la console web et le Shell sont pour l'instant en italien ; l'installateur et la documentation existent en cinq langues.
 - Mettre à jour les fichiers de AndreaServer après un `git pull` : `/opt/andreaserver/install.sh --files-only`.
+
+## Licence
+
+[MIT](../LICENSE)

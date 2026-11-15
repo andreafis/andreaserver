@@ -42,3 +42,7 @@ Nel repository non ci sono chiavi, password, token, indirizzi di casa né dati p
 - La cartella condivisa può essere aperta senza password (scelta durante l'installazione): va bene solo su una rete di casa fidata.
 - Banner, console web e Shell sono per ora in italiano; installatore e documentazione sono in cinque lingue.
 - Aggiornare i file di AndreaServer dopo un `git pull`: `/opt/andreaserver/install.sh --files-only`.
+
+## Licenza
+
+[MIT](LICENSE)

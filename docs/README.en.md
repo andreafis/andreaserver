@@ -42,3 +42,7 @@ The repository holds no keys, passwords, tokens, home addresses or personal data
 - The shared folder can be opened without a password (your choice during setup): only suitable for a trusted home network.
 - Banner, web console and Shell are Italian-only for now; the installer and documentation come in five languages.
 - To refresh AndreaServer's files after a `git pull`: `/opt/andreaserver/install.sh --files-only`.
+
+## License
+
+[MIT](../LICENSE)
