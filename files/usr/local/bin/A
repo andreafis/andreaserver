@@ -1,0 +1,4 @@
+#!/bin/bash
+# A = ricarica la schermata AndreaServer
+clear 2>/dev/null
+/usr/local/bin/banner-andreaserver

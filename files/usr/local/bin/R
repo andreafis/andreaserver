@@ -1,0 +1,11 @@
+#!/bin/bash
+# R = riavvio di emergenza del server, con conferma Y/N
+echo -e "\e[5;91m████\e[0m \e[1;91mRIAVVIO DI EMERGENZA\e[0m \e[5;91m████\e[0m"
+echo -e "Il server verrà riavviato: Jellyfin, Pi-hole (DNS), VPN e Samba si fermeranno per circa 1-2 minuti."
+read -r -n1 -p $'\e[93;1mConfermi il riavvio? [Y/N] \e[0m' r; echo
+if [[ $r == [Yy] ]]; then
+  echo -e "\e[38;5;208m■\e[0m Salvo i dati su disco e riavvio..."
+  sync; systemctl reboot
+else
+  echo -e "\e[92m●\e[0m Annullato, non è successo nulla."
+fi

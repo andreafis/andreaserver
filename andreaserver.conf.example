@@ -1,0 +1,14 @@
+# Esempio per l'installazione senza domande:  ./install.sh --config mio.conf
+# Copialo con un altro nome e NON metterlo su GitHub.
+ANDREASERVER_LANG="it"            # it en de fr ja
+MEDIA_MOUNT="/mnt/media"    # disco con film e musica
+INDEX_MOUNT="/"             # disco per i backup ("/" = disco di sistema)
+CITY="Roma"
+LAT="41.9"
+LON="12.5"
+SHARE_NAME="Media"
+SHARE_GUEST="yes"           # yes = cartella condivisa senza password
+DUCK_DOMAIN=""
+DUCK_TOKEN=""
+CONSOLE_PW=""               # vuoto = creata a caso
+PIHOLE_PW=""                # vuoto = non cambiata

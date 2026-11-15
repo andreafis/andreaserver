@@ -1,0 +1,2 @@
+*/5 * * * * root /usr/local/bin/banner-andreaserver --log-temp
+0 0 * * * root /usr/local/bin/banner-andreaserver --reset-temp

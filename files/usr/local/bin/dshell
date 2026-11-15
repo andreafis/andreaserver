@@ -1,0 +1,1151 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""dshell - ambiente testuale a finestre per il AndreaServer.
+Albero cartelle, elenco file, programmi e servizi, con menu e mouse.
+Avvio: D  (oppure dshell)"""
+import curses, os, re, shutil, socket, subprocess, sys, time
+
+CONF_DIR = "/etc/dshell"
+PROG_CONF = CONF_DIR + "/programmi.conf"
+SVC_CONF = CONF_DIR + "/servizi.conf"
+
+PROG_DEFAULT = """# Elenco programmi di dshell.  Formato:  Etichetta | comando | opzioni
+# opzioni (separate da virgola): pausa = aspetta Invio alla fine
+#                                conferma = chiede prima di eseguire
+#                                vista = mostra l'output in una finestra
+Monitor attività (btop) | btop |
+Midnight Commander | mc |
+Linea di comando (bash) | bash |
+Schermata AndreaServer | banner-andreaserver | pausa
+Spazio su disco | df -h -x tmpfs -x devtmpfs | vista
+Riavvia Jellyfin | systemctl restart jellyfin && echo Jellyfin riavviato | pausa,conferma
+Pi-hole: stato | pihole status | vista
+Pi-hole: aggiorna liste | pihole -g | pausa,conferma
+Backup configurazione | backup-server | pausa,conferma
+DietPi-Launcher | /boot/dietpi/dietpi-launcher |
+DietPi-Config | /boot/dietpi/dietpi-config |
+DietPi-Software | /boot/dietpi/dietpi-software |
+DietPi-Update | /boot/dietpi/dietpi-update | pausa,conferma
+"""
+SVC_DEFAULT = """# Servizi mostrati da dshell.  Formato:  unità systemd | etichetta
+jellyfin | Jellyfin (media)
+pihole-FTL | Pi-hole (DNS)
+smbd | Samba (condivisioni)
+nmbd | Samba (nomi rete)
+openvpn@server | VPN OpenVPN
+dropbear | SSH (dropbear)
+cron | Cron (pianificati)
+"""
+RISKY_UNITS = ("dropbear", "ssh", "sshd", "openvpn@server")
+PROTECTED = {"/", "/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib64", "/mnt",
+             "/opt", "/proc", "/root", "/run", "/sbin", "/srv", "/sys", "/tmp",
+             "/usr", "/var"}
+REAL_FS = {"ext2", "ext3", "ext4", "vfat", "exfat", "ntfs", "ntfs3", "fuseblk", "btrfs",
+           "xfs", "f2fs", "nfs", "nfs4", "cifs", "apfs", "hfs"}
+
+MENUS = [
+    ("File", [("Apri / Esegui        Invio", "open"), ("Visualizza              F3", "view"),
+              ("Modifica (nano)         F4", "edit"), None,
+              ("Copia...                F5", "copy"), ("Sposta / Rinomina...    F6", "move"),
+              ("Nuova cartella...       F7", "mkdir"), ("Elimina...              F8", "delete"), None,
+              ("Esegui comando...", "run"), ("Linea di comando", "shell"), None,
+              ("Esci                   F10", "quit")]),
+    ("Vista", [("Aggiorna                F2", "refresh"), ("File nascosti sì/no", "hidden"), None,
+               ("Ordina per nome", "sort_name"), ("Ordina per dimensione", "sort_size"),
+               ("Ordina per data", "sort_date"), None, ("Vai a cartella...", "goto")]),
+    ("Servizi", [("Avvia", "svc_start"), ("Ferma", "svc_stop"), ("Riavvia", "svc_restart"), None,
+                 ("Stato dettagliato", "svc_status"), ("Ultimi log", "svc_log"), None,
+                 ("Tutti i servizi attivi", "svc_all")]),
+    ("Utilità", [("Monitor attività", "btop"), ("Spazio su disco", "df"), ("Memoria", "free"),
+                 ("Rete", "net"), ("Utenti collegati", "who"), ("Log di sistema", "journal"), None,
+                 ("Modifica elenco programmi", "edit_prog"), ("Modifica elenco servizi", "edit_svc"), None,
+                 ("Riavvia il server...", "reboot"), ("Spegni il server...", "poweroff")]),
+    ("Aiuto", [("Tasti e mouse           F1", "help"), ("Informazioni", "about")]),
+]
+FKEYS = [("F9", "Menu", "menu"), ("F1", "Aiuto", "help"), ("F3", "Vedi", "view"),
+         ("F4", "Modif", "edit"), ("F5", "Copia", "copy"), ("F6", "Sposta", "move"),
+         ("F7", "Crea", "mkdir"), ("F8", "Elim", "delete"), ("F2", "Aggiorna", "refresh"),
+         ("F10", "Esci", "quit")]
+HELP = """
+ TASTIERA
+   Tab / Maiusc+Tab     passa da un riquadro all'altro
+   Frecce, Pag, Inizio  si muove nell'elenco
+   Invio                apre la cartella, il file, il programma o il servizio
+   Destra / Sinistra    (albero) apre / chiude il ramo
+   Backspace            (file) sale alla cartella superiore
+   una lettera          salta alla prima voce che inizia così
+   F9 oppure Alt+lettera  apre i menu     Esc  chiude menu e finestre
+   F2 aggiorna   F3 vedi   F4 modifica   F5 copia   F6 sposta/rinomina
+   F7 nuova cartella   F8 elimina   F10 esci
+
+ MOUSE
+   clic                 seleziona una voce o attiva un riquadro
+   doppio clic          come Invio
+   clic su [+] / [-]    apre / chiude il ramo dell'albero
+   rotellina            scorre l'elenco sotto il puntatore
+   clic sui menu, sui dischi, sui tasti funzione in basso e sui pulsanti
+   clic sulla barra a destra di un riquadro: pagina su / giù
+
+ RIQUADRI
+   Albero cartelle      le cartelle del server
+   File                 il contenuto della cartella scelta
+   Programmi            comandi pronti (si modificano dal menu Utilità)
+   Servizi              stato dei servizi: Invio per avviare, fermare, vedere i log
+
+ Con Terminale di macOS tieni premuto Fn (o Opzione) per selezionare
+ testo con il mouse mentre dshell è aperto.
+"""
+ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|\r")
+WHEEL_UP = getattr(curses, "BUTTON4_PRESSED", 0x10000)
+WHEEL_DN = getattr(curses, "BUTTON5_PRESSED", 0x200000)
+CLICK = curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED
+ENTER = ("\n", "\r", curses.KEY_ENTER)
+BKSP = (curses.KEY_BACKSPACE, "\x7f", "\x08")
+ESC = "\x1b"
+
+
+def human(n):
+    for u in ("", "K", "M", "G", "T"):
+        if n < 1024 or u == "T":
+            return ("%d%s" % (n, u)) if u == "" else ("%.1f%s" % (n, u))
+        n /= 1024.0
+
+
+def read_conf(path, default):
+    if not os.path.exists(path):
+        try:
+            os.makedirs(CONF_DIR, exist_ok=True)
+            with open(path, "w") as f:
+                f.write(default)
+        except OSError:
+            pass
+    try:
+        with open(path) as f:
+            text = f.read()
+    except OSError:
+        text = default
+    rows = []
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            rows.append([c.strip() for c in line.split("|")])
+    return rows
+
+
+class Pane:
+    def __init__(self, name, title):
+        self.name, self.title = name, title
+        self.items, self.sel, self.top = [], 0, 0
+        self.y = self.x = self.h = self.w = 0
+
+    @property
+    def rows(self):
+        return max(1, self.h - 2)
+
+    def fix(self):
+        n = len(self.items)
+        self.sel = max(0, min(self.sel, n - 1))
+        if self.sel < self.top:
+            self.top = self.sel
+        if self.sel >= self.top + self.rows:
+            self.top = self.sel - self.rows + 1
+        self.top = max(0, min(self.top, max(0, n - self.rows)))
+
+    def inside(self, y, x):
+        return self.y <= y < self.y + self.h and self.x <= x < self.x + self.w
+
+    def cur(self):
+        return self.items[self.sel] if self.items else None
+
+
+class Shell:
+    def __init__(self, scr):
+        self.scr = scr
+        self.tree = Pane("tree", "Albero cartelle")
+        self.files = Pane("files", "File")
+        self.progs = Pane("progs", "Programmi")
+        self.svcs = Pane("svcs", "Servizi")
+        self.panes = [self.tree, self.files, self.progs, self.svcs]
+        self.focus = 1
+        self.hidden = False
+        self.sort = "name"
+        self.cache = {}
+        self.expanded = {"/"}
+        self.cwd = "/"
+        self.svc_state = {}
+        self.svc_time = 0
+        self.last_click = (None, -1, 0.0)
+        self.menu_pos, self.drive_pos, self.fkey_pos = [], [], []
+        self.small = False
+        self.host = socket.gethostname()
+        self.init_screen()
+        self.load_conf()
+        self.set_dir(os.getcwd())
+
+    # ---------- schermo ----------
+    def init_screen(self):
+        curses.start_color()
+        hi = curses.COLORS >= 16
+        Wh = 15 if hi else curses.COLOR_WHITE
+        B, K, C = curses.COLOR_BLUE, curses.COLOR_BLACK, curses.COLOR_CYAN
+        ip = curses.init_pair
+        ip(1, Wh, B)                                  # riquadri
+        ip(2, K, Wh)                                  # menu, stato, finestre
+        ip(3, K, C)                                   # selezione attiva
+        ip(4, B, Wh)                                  # titolo / selezione inattiva
+        ip(5, curses.COLOR_RED, Wh)                   # lettere e tasti evidenziati
+        ip(6, 10 if hi else curses.COLOR_GREEN, B)    # servizio attivo
+        ip(7, 9 if hi else curses.COLOR_RED, B)       # servizio fermo
+        ip(8, 11 if hi else curses.COLOR_YELLOW, B)   # cartelle
+        ip(9, 14 if hi else C, B)                     # cornici inattive
+        ip(10, 8 if hi else K, K)                     # ombra
+        self.bold = 0 if hi else curses.A_BOLD
+        self.scr.bkgd(" ", self.P(1))
+        self.scr.keypad(True)
+        self.scr.timeout(1000)
+        curses.curs_set(0)
+        self.mouse_on()
+
+    def mouse_on(self):
+        curses.mousemask(curses.ALL_MOUSE_EVENTS)
+        curses.mouseinterval(0)
+
+    def P(self, n):
+        a = curses.color_pair(n)
+        if n in (1, 6, 7, 8, 9):
+            a |= getattr(self, "bold", 0)
+        return a
+
+    def put(self, y, x, s, attr=0):
+        if y < 0 or y >= self.H or x >= self.W:
+            return
+        if x < 0:
+            s, x = s[-x:], 0
+        s = s[: self.W - x]
+        if s:
+            try:
+                self.scr.addstr(y, x, s, attr)
+            except curses.error:
+                pass
+
+    def key(self):
+        try:
+            return self.scr.get_wch()
+        except curses.error:
+            return None
+        except KeyboardInterrupt:
+            return ESC
+
+    def box(self, y, x, h, w, attr, title="", double=False, tattr=None):
+        tl, tr, bl, br, hz, vt = "╔╗╚╝═║" if double else "┌┐└┘─│"
+        self.put(y, x, tl + hz * (w - 2) + tr, attr)
+        for i in range(1, h - 1):
+            self.put(y + i, x, vt, attr)
+            self.put(y + i, x + w - 1, vt, attr)
+        self.put(y + h - 1, x, bl + hz * (w - 2) + br, attr)
+        if title:
+            t = " " + title + " "
+            if len(t) > w - 4:
+                t = " …" + t[-(w - 6):]
+            self.put(y, x + max(2, (w - len(t)) // 2), t, tattr if tattr is not None else attr)
+
+    # ---------- dati ----------
+    def load_conf(self):
+        self.progs.items = []
+        for r in read_conf(PROG_CONF, PROG_DEFAULT):
+            if len(r) >= 2 and r[0] and r[1]:
+                opts = set(o.strip() for o in (r[2] if len(r) > 2 else "").split(","))
+                self.progs.items.append((r[0], r[1], opts))
+        self.svcs.items = [(r[0], r[1] if len(r) > 1 and r[1] else r[0])
+                           for r in read_conf(SVC_CONF, SVC_DEFAULT) if r[0]]
+        self.svc_time = 0
+
+    def poll_services(self, force=False):
+        if not force and time.time() - self.svc_time < 5:
+            return
+        self.svc_time = time.time()
+        units = [u for u, _ in self.svcs.items]
+        if not units:
+            return
+        try:
+            out = subprocess.run(["systemctl", "is-active"] + units, capture_output=True,
+                                 text=True, timeout=5).stdout.split()
+        except (OSError, subprocess.SubprocessError):
+            out = []
+        self.svc_state = {u: (out[i] if i < len(out) else "?") for i, u in enumerate(units)}
+
+    def subdirs(self, p):
+        if p not in self.cache:
+            try:
+                with os.scandir(p) as it:
+                    d = sorted((e.name for e in it if e.is_dir(follow_symlinks=False)
+                                and (self.hidden or not e.name.startswith("."))), key=str.lower)
+            except OSError:
+                d = []
+            self.cache[p] = d
+        return self.cache[p]
+
+    def build_tree(self):
+        out = [("/", "", "/")]
+
+        def rec(path, prefix):
+            subs = self.subdirs(path)
+            for i, n in enumerate(subs):
+                last = i == len(subs) - 1
+                cp = os.path.join(path, n)
+                out.append((cp, prefix + ("└─" if last else "├─"), n))
+                if cp in self.expanded:
+                    rec(cp, prefix + ("  " if last else "│ "))
+        if "/" in self.expanded:
+            rec("/", "")
+        self.tree.items = out
+
+    def set_dir(self, path, keep=None):
+        path = os.path.abspath(path)
+        while not os.path.isdir(path) and path != "/":
+            path = os.path.dirname(path)
+        p = path
+        while p != "/":
+            p = os.path.dirname(p)
+            self.expanded.add(p)
+        self.build_tree()
+        paths = [t[0] for t in self.tree.items]
+        p = path
+        while p not in paths and p != "/":
+            p = os.path.dirname(p)
+        self.tree.sel = paths.index(p) if p in paths else 0
+        self.cwd = path
+        self.load_files(keep)
+
+    def load_files(self, keep=None):
+        old = keep or (self.files.cur()[0] if self.files.items else None)
+        ents = []
+        try:
+            with os.scandir(self.cwd) as it:
+                for e in it:
+                    if not self.hidden and e.name.startswith("."):
+                        continue
+                    try:
+                        st = e.stat(follow_symlinks=False)
+                        isd = e.is_dir()
+                    except OSError:
+                        continue
+                    ents.append((e.name, isd, st.st_size, st.st_mtime,
+                                 bool(st.st_mode & 0o111) and not isd))
+        except OSError:
+            pass
+        if self.sort == "size":
+            ents.sort(key=lambda e: (not e[1], -e[2], e[0].lower()))
+        elif self.sort == "date":
+            ents.sort(key=lambda e: (not e[1], -e[3], e[0].lower()))
+        else:
+            ents.sort(key=lambda e: (not e[1], e[0].lower()))
+        if self.cwd != "/":
+            ents.insert(0, ("..", True, 0, 0, False))
+        self.files.items = ents
+        names = [e[0] for e in ents]
+        self.files.sel = names.index(old) if old in names else 0
+        self.files.top = 0
+
+    def refresh_all(self):
+        self.cache.clear()
+        self.load_conf()
+        self.set_dir(self.cwd)
+        self.poll_services(True)
+
+    def mounts(self):
+        out = []
+        try:
+            with open("/proc/mounts") as f:
+                for line in f:
+                    p = line.split()
+                    if len(p) > 2 and p[2] in REAL_FS:
+                        mp = p[1].replace("\\040", " ")
+                        if mp not in out and not mp.startswith("/boot"):
+                            out.append(mp)
+        except OSError:
+            pass
+        return out or ["/"]
+
+    # ---------- disegno ----------
+    def draw(self):
+        s = self.scr
+        s.erase()
+        self.H, self.W = s.getmaxyx()
+        H, W = self.H, self.W
+        self.small = H < 16 or W < 62
+        if self.small:
+            self.put(0, 0, "Finestra troppo piccola: allargala (minimo 62x16). F10 esce.", self.P(1))
+            return
+        self.poll_services()
+        # titolo
+        self.put(0, 0, " " * W, self.P(4))
+        self.put(0, 1, self.host, self.P(4))
+        t = "AndreaServer  ─  Shell"
+        self.put(0, (W - len(t)) // 2, t, self.P(4) | curses.A_BOLD)
+        clock = time.strftime("%d/%m/%Y  %H:%M")
+        self.put(0, W - len(clock) - 1, clock, self.P(4))
+        # menu
+        self.put(1, 0, " " * W, self.P(2))
+        x = 1
+        self.menu_pos = []
+        for name, _ in MENUS:
+            self.put(1, x, " " + name + " ", self.P(2))
+            self.put(1, x + 1, name[0], self.P(5) | curses.A_BOLD)
+            self.menu_pos.append((x, x + len(name) + 2))
+            x += len(name) + 3
+        # dischi
+        self.put(2, 1, "Dischi:", self.P(9))
+        x = 9
+        self.drive_pos = []
+        for mp in self.mounts():
+            lab = "[" + ("/" if mp == "/" else os.path.basename(mp)[:14]) + "]"
+            if x + len(lab) > W - 28:
+                break
+            here = self.cwd == mp or self.cwd.startswith(mp.rstrip("/") + "/")
+            self.put(2, x, lab, self.P(3) if here and mp != "/" or (mp == "/" and not any(
+                self.cwd.startswith(m + "/") or self.cwd == m for m in self.mounts() if m != "/")) else self.P(1))
+            self.drive_pos.append((x, x + len(lab), mp))
+            x += len(lab) + 1
+        try:
+            du = shutil.disk_usage(self.cwd)
+            fr = "Libero %s di %s" % (human(du.free), human(du.total))
+            self.put(2, W - len(fr) - 1, fr, self.P(9))
+        except OSError:
+            pass
+        # riquadri
+        avail = H - 4
+        uh = max(6, int(avail * 0.6))
+        lh = avail - uh
+        tw = max(24, int(W * 0.36))
+        pw = int(W * 0.55)
+        self.tree.y, self.tree.x, self.tree.h, self.tree.w = 3, 0, uh, tw
+        self.files.y, self.files.x, self.files.h, self.files.w = 3, tw, uh, W - tw
+        self.progs.y, self.progs.x, self.progs.h, self.progs.w = 3 + uh, 0, lh, pw
+        self.svcs.y, self.svcs.x, self.svcs.h, self.svcs.w = 3 + uh, pw, lh, W - pw
+        self.files.title = self.cwd
+        for i, p in enumerate(self.panes):
+            self.draw_pane(p, i == self.focus)
+        # barra tasti
+        self.put(H - 1, 0, " " * W, self.P(2))
+        x = 1
+        k, lab, act = FKEYS[-1]                      # F10 sempre visibile, a destra
+        rx = W - len(k) - len(lab) - 2
+        self.put(H - 1, rx, k, self.P(5) | curses.A_BOLD)
+        self.put(H - 1, rx + len(k), "=" + lab, self.P(2))
+        self.fkey_pos = [(rx, W, act)]
+        for k, lab, act in FKEYS[:-1]:
+            if x + len(k) + len(lab) + 1 > rx - 1:
+                break
+            self.put(H - 1, x, k, self.P(5) | curses.A_BOLD)
+            self.put(H - 1, x + len(k), "=" + lab, self.P(2))
+            self.fkey_pos.append((x, x + len(k) + len(lab) + 1, act))
+            x += len(k) + len(lab) + 3
+
+    def row_text(self, p, item, width):
+        """-> (testo, attributo normale)"""
+        if p is self.tree:
+            path, prefix, name = item
+            subs = self.subdirs(path)
+            mark = "-" if path in self.expanded and subs else ("+" if subs else " ")
+            return "%s[%s] %s" % (prefix, mark, name), self.P(1)
+        if p is self.files:
+            name, isd, size, mt, ex = item
+            sz = "<DIR>" if isd else human(size)
+            dt = time.strftime("%d-%m-%y %H:%M", time.localtime(mt)) if mt else ""
+            tail = "%7s  %14s" % (sz, dt) if width >= 44 else "%7s" % sz
+            nw = width - len(tail) - 2
+            nm = name + ("*" if ex else "")
+            if len(nm) > nw:
+                nm = nm[: nw - 1] + "…"
+            return " " + nm.ljust(nw) + " " + tail, (self.P(8) if isd else self.P(1))
+        if p is self.progs:
+            return " " + item[0], self.P(1)
+        unit, lab = item
+        st = self.svc_state.get(unit, "?")
+        word = {"active": "attivo", "inactive": "fermo", "failed": "errore",
+                "activating": "avvio…", "deactivating": "arresto…"}.get(st, st)
+        left = " ● " + lab
+        return left[: width - len(word) - 2].ljust(width - len(word) - 1) + word + " ", self.P(1)
+
+    def draw_pane(self, p, focused):
+        if p.h < 3:
+            return
+        p.fix()
+        frame = self.P(1) if focused else self.P(9)
+        self.box(p.y, p.x, p.h, p.w, frame, p.title, double=focused,
+                 tattr=self.P(3) if focused else self.P(9))
+        iw = p.w - 2
+        for r in range(p.rows):
+            i = p.top + r
+            if i >= len(p.items):
+                break
+            text, attr = self.row_text(p, p.items[i], iw)
+            text = text[:iw].ljust(iw)
+            if i == p.sel:
+                attr = self.P(3) if focused else self.P(4)
+            self.put(p.y + 1 + r, p.x + 1, text, attr)
+            if p is self.svcs and i != p.sel:
+                st = self.svc_state.get(p.items[i][0], "?")
+                self.put(p.y + 1 + r, p.x + 2, "●", self.P(6) if st == "active" else self.P(7))
+        n = len(p.items)
+        if n > p.rows:
+            th = max(1, p.rows * p.rows // n)
+            tp = (p.rows - th) * p.top // max(1, n - p.rows)
+            for r in range(p.rows):
+                self.put(p.y + 1 + r, p.x + p.w - 1, "█" if tp <= r < tp + th else "░", frame)
+
+    def shadow(self, y, x, h, w):
+        for i in range(1, h + 1):
+            self.put(y + i, x + w, "  ", self.P(10))
+        self.put(y + h, x + 2, " " * w, self.P(10))
+
+    # ---------- finestre ----------
+    def dialog(self, title, lines, buttons=("OK",), inp=None):
+        lines = list(lines)
+        text = inp or ""
+        cur = len(text)
+        bsel = 0
+        while True:
+            self.draw()
+            H, W = self.H, self.W
+            wd = max([len(title) + 8] + [len(l) for l in lines] + [sum(len(b) + 6 for b in buttons)]) + 4
+            if inp is not None:
+                wd = max(wd, 64)
+            wd = min(wd, W - 4)
+            ht = len(lines) + 4 + (2 if inp is not None else 0)
+            y0, x0 = max(0, (H - ht) // 2), (W - wd) // 2
+            self.shadow(y0, x0, ht, wd)
+            for i in range(ht):
+                self.put(y0 + i, x0, " " * wd, self.P(2))
+            self.box(y0, x0, ht, wd, self.P(2), title, double=True, tattr=self.P(4) | curses.A_BOLD)
+            for i, l in enumerate(lines):
+                self.put(y0 + 1 + i, x0 + 2, l[: wd - 4], self.P(2))
+            fw = wd - 4
+            iy = y0 + len(lines) + 2
+            if inp is not None:
+                off = max(0, cur - fw + 1)
+                self.put(iy, x0 + 2, text[off: off + fw].ljust(fw), self.P(1))
+            by = y0 + ht - 2
+            total = sum(len(b) + 4 for b in buttons) + 2 * (len(buttons) - 1)
+            bx = x0 + (wd - total) // 2
+            bpos = []
+            for i, b in enumerate(buttons):
+                lab = "[ " + b + " ]"
+                self.put(by, bx, lab, self.P(3) | curses.A_BOLD if i == bsel else self.P(2))
+                bpos.append((bx, bx + len(lab)))
+                bx += len(lab) + 2
+            if inp is not None:
+                curses.curs_set(1)
+                try:
+                    self.scr.move(iy, x0 + 2 + cur - max(0, cur - fw + 1))
+                except curses.error:
+                    pass
+            self.scr.refresh()
+            k = self.key()
+            curses.curs_set(0)
+            if k is None or k == curses.KEY_RESIZE:
+                continue
+            if k == curses.KEY_MOUSE:
+                try:
+                    _, mx, my, _, b = curses.getmouse()
+                except curses.error:
+                    continue
+                if b & CLICK and my == by:
+                    for i, (a, z) in enumerate(bpos):
+                        if a <= mx < z:
+                            return i, text
+                continue
+            if k == ESC:
+                return -1, text
+            if k in ENTER:
+                return bsel, text
+            if k == "\t":
+                bsel = (bsel + 1) % len(buttons)
+            elif k == curses.KEY_BTAB:
+                bsel = (bsel - 1) % len(buttons)
+            elif inp is None:
+                if k == curses.KEY_RIGHT:
+                    bsel = (bsel + 1) % len(buttons)
+                elif k == curses.KEY_LEFT:
+                    bsel = (bsel - 1) % len(buttons)
+                elif isinstance(k, str):
+                    for i, b in enumerate(buttons):
+                        if b[0].lower() == k.lower():
+                            return i, text
+            else:
+                if k == curses.KEY_LEFT:
+                    cur = max(0, cur - 1)
+                elif k == curses.KEY_RIGHT:
+                    cur = min(len(text), cur + 1)
+                elif k == curses.KEY_HOME:
+                    cur = 0
+                elif k == curses.KEY_END:
+                    cur = len(text)
+                elif k in BKSP:
+                    if cur:
+                        text, cur = text[: cur - 1] + text[cur:], cur - 1
+                elif k == curses.KEY_DC:
+                    text = text[:cur] + text[cur + 1:]
+                elif isinstance(k, str) and k.isprintable():
+                    text, cur = text[:cur] + k + text[cur:], cur + 1
+
+    def info(self, title, *lines):
+        self.dialog(title, lines)
+
+    def confirm(self, title, *lines):
+        return self.dialog(title, lines, ("Sì", "No"))[0] == 0
+
+    def ask(self, title, prompt, default=""):
+        b, t = self.dialog(title, [prompt], ("OK", "Annulla"), inp=default)
+        return t.strip() if b == 0 and t.strip() else None
+
+    def choose(self, title, options):
+        sel = 0
+        while True:
+            self.draw()
+            wd = min(self.W - 4, max([len(title) + 8] + [len(o) for o in options]) + 6)
+            ht = len(options) + 2
+            y0, x0 = max(0, (self.H - ht) // 2), (self.W - wd) // 2
+            self.shadow(y0, x0, ht, wd)
+            self.box(y0, x0, ht, wd, self.P(2), title, double=True, tattr=self.P(4) | curses.A_BOLD)
+            for i, o in enumerate(options):
+                self.put(y0 + 1 + i, x0 + 1, (" " + o).ljust(wd - 2)[: wd - 2],
+                         self.P(3) if i == sel else self.P(2))
+            self.scr.refresh()
+            k = self.key()
+            if k == curses.KEY_MOUSE:
+                try:
+                    _, mx, my, _, b = curses.getmouse()
+                except curses.error:
+                    continue
+                if b & CLICK:
+                    if x0 < mx < x0 + wd - 1 and y0 < my < y0 + ht - 1:
+                        return my - y0 - 1
+                    return -1
+            elif k == ESC:
+                return -1
+            elif k in ENTER:
+                return sel
+            elif k == curses.KEY_UP:
+                sel = (sel - 1) % len(options)
+            elif k == curses.KEY_DOWN:
+                sel = (sel + 1) % len(options)
+
+    def viewer(self, title, text):
+        lines = ANSI.sub("", text).expandtabs(8).split("\n")
+        top = left = 0
+        while True:
+            self.scr.erase()
+            self.H, self.W = self.scr.getmaxyx()
+            H, W = self.H, self.W
+            rows = max(1, H - 2)
+            top = max(0, min(top, max(0, len(lines) - rows)))
+            self.put(0, 0, " " * W, self.P(4))
+            self.put(0, 1, title[: W - 30], self.P(4) | curses.A_BOLD)
+            pos = "righe %d-%d di %d" % (top + 1, min(len(lines), top + rows), len(lines))
+            self.put(0, W - len(pos) - 1, pos, self.P(4))
+            for r in range(rows):
+                if top + r < len(lines):
+                    self.put(1 + r, 0, lines[top + r][left: left + W], self.P(1))
+            self.put(H - 1, 0, " " * W, self.P(2))
+            self.put(H - 1, 1, "Esc", self.P(5) | curses.A_BOLD)
+            self.put(H - 1, 4, "=Chiudi   Frecce, Pag, Inizio, Fine, rotellina = scorri", self.P(2))
+            self.scr.refresh()
+            k = self.key()
+            if k == curses.KEY_MOUSE:
+                try:
+                    _, mx, my, _, b = curses.getmouse()
+                except curses.error:
+                    continue
+                if b & WHEEL_UP:
+                    top -= 3
+                elif b & WHEEL_DN:
+                    top += 3
+                elif b & CLICK and my == H - 1:
+                    return
+            elif k in (ESC, "q", "Q", curses.KEY_F3, curses.KEY_F10) or k in ENTER:
+                return
+            elif k == curses.KEY_UP:
+                top -= 1
+            elif k == curses.KEY_DOWN:
+                top += 1
+            elif k == curses.KEY_PPAGE:
+                top -= rows
+            elif k in (curses.KEY_NPAGE, " "):
+                top += rows
+            elif k == curses.KEY_HOME:
+                top, left = 0, 0
+            elif k == curses.KEY_END:
+                top = len(lines)
+            elif k == curses.KEY_LEFT:
+                left = max(0, left - 8)
+            elif k == curses.KEY_RIGHT:
+                left += 8
+
+    def menu(self, mi=0):
+        it = 0
+        while True:
+            self.draw()
+            if self.small:
+                return None
+            name, items = MENUS[mi]
+            x0 = self.menu_pos[mi][0]
+            self.put(1, x0, " " + name + " ", self.P(3))
+            wd = max(len(i[0]) for i in items if i) + 4
+            mx0 = min(x0, self.W - wd - 2)
+            ht = len(items) + 2
+            self.shadow(2, mx0, ht, wd)
+            self.box(2, mx0, ht, wd, self.P(2))
+            for i, item in enumerate(items):
+                if item is None:
+                    self.put(3 + i, mx0, "├" + "─" * (wd - 2) + "┤", self.P(2))
+                else:
+                    self.put(3 + i, mx0 + 1, (" " + item[0]).ljust(wd - 2),
+                             self.P(3) if i == it else self.P(2))
+            self.scr.refresh()
+            k = self.key()
+            if k == curses.KEY_MOUSE:
+                try:
+                    _, mx, my, _, b = curses.getmouse()
+                except curses.error:
+                    continue
+                if not b & CLICK:
+                    continue
+                if my == 1:
+                    hit = [i for i, (a, z) in enumerate(self.menu_pos) if a <= mx < z]
+                    if not hit or hit[0] == mi:
+                        return None
+                    mi, it = hit[0], 0
+                elif mx0 < mx < mx0 + wd - 1 and 3 <= my < 3 + len(items):
+                    if items[my - 3]:
+                        return items[my - 3][1]
+                else:
+                    return None
+            elif k in (ESC, curses.KEY_F9):
+                return None
+            elif k == curses.KEY_LEFT:
+                mi, it = (mi - 1) % len(MENUS), 0
+            elif k == curses.KEY_RIGHT:
+                mi, it = (mi + 1) % len(MENUS), 0
+            elif k in (curses.KEY_UP, curses.KEY_DOWN):
+                d = -1 if k == curses.KEY_UP else 1
+                it = (it + d) % len(items)
+                while items[it] is None:
+                    it = (it + d) % len(items)
+            elif k in ENTER:
+                return items[it][1]
+
+    # ---------- esecuzione ----------
+    def run_ext(self, cmd, pause=False, cwd=None):
+        curses.def_prog_mode()
+        curses.endwin()
+        sys.stdout.write("\033[0m\033[2J\033[H")
+        sys.stdout.flush()
+        try:
+            rc = subprocess.call(cmd, shell=True, cwd=cwd or self.cwd, executable="/bin/bash")
+        except KeyboardInterrupt:
+            rc = 130
+        except OSError as e:
+            print(e)
+            rc = 1
+        if pause or rc not in (0, 130):
+            try:
+                input("\n\033[7m Premi Invio per tornare alla Shell \033[0m ")
+            except (EOFError, KeyboardInterrupt):
+                pass
+        curses.reset_prog_mode()
+        self.scr.keypad(True)
+        self.mouse_on()
+        curses.curs_set(0)
+        self.scr.clear()
+        self.refresh_all()
+
+    def capture(self, title, cmd):
+        self.draw()
+        self.put(self.H - 1, 0, " Attendere…".ljust(self.W), self.P(3))
+        self.scr.refresh()
+        try:
+            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60,
+                               errors="replace", executable="/bin/bash", cwd=self.cwd)
+            out = (r.stdout + r.stderr).rstrip() or "(nessun output)"
+        except subprocess.TimeoutExpired:
+            out = "Il comando non ha risposto entro 60 secondi."
+        except OSError as e:
+            out = str(e)
+        self.viewer(title, out)
+
+    def target(self):
+        """Percorso su cui agiscono le operazioni sui file."""
+        if self.panes[self.focus] is self.tree:
+            return self.cwd
+        it = self.files.cur()
+        if not it or it[0] == "..":
+            return None
+        return os.path.join(self.cwd, it[0])
+
+    def run_prog(self):
+        it = self.progs.cur()
+        if not it:
+            return
+        lab, cmd, opts = it
+        if "conferma" in opts and not self.confirm(lab, "Eseguire questo comando?", "", "  " + cmd):
+            return
+        if "vista" in opts:
+            self.capture(lab, cmd)
+        else:
+            self.run_ext(cmd, pause="pausa" in opts)
+
+    def svc_action(self, act):
+        it = self.svcs.cur()
+        if not it:
+            return
+        unit, lab = it
+        if act in ("stop", "restart", "start"):
+            verb = {"stop": "Fermare", "restart": "Riavviare", "start": "Avviare"}[act]
+            lines = ["%s il servizio %s?" % (verb, lab)]
+            if act != "start" and unit in RISKY_UNITS:
+                lines += ["", "ATTENZIONE: questo servizio ti tiene collegato al server.",
+                          "Potresti perdere la connessione."]
+            if act != "start" and not self.confirm("Servizi", *lines):
+                return
+            try:
+                r = subprocess.run(["systemctl", act, unit], capture_output=True, text=True, timeout=60)
+                if r.returncode:
+                    self.info("Errore", *(r.stderr.strip().split("\n")[:6] or ["Comando non riuscito."]))
+            except (OSError, subprocess.SubprocessError) as e:
+                self.info("Errore", str(e))
+            self.poll_services(True)
+        elif act == "status":
+            self.capture("Stato: " + lab, "systemctl status --no-pager -l '%s'" % unit)
+        elif act == "log":
+            self.capture("Log: " + lab, "journalctl -u '%s' -n 200 --no-pager" % unit)
+
+    def do(self, act):
+        if not act:
+            return
+        if act == "quit":
+            raise SystemExit
+        if act == "menu":
+            return self.do(self.menu(0))
+        if act == "help":
+            return self.viewer("Aiuto — tasti e mouse", HELP)
+        if act == "about":
+            return self.info("Informazioni", "dshell — ambiente testuale del AndreaServer",
+                             "", "Si avvia con il comando  D  (oppure dshell).",
+                             "Programmi e servizi si modificano in " + CONF_DIR)
+        if act == "refresh":
+            return self.refresh_all()
+        if act == "hidden":
+            self.hidden = not self.hidden
+            return self.refresh_all()
+        if act.startswith("sort_"):
+            self.sort = act[5:]
+            return self.load_files()
+        if act == "goto":
+            p = self.ask("Vai a cartella", "Percorso:", self.cwd)
+            if p:
+                if os.path.isdir(os.path.expanduser(p)):
+                    self.set_dir(os.path.expanduser(p))
+                else:
+                    self.info("Vai a cartella", "La cartella non esiste:", p)
+            return
+        if act == "open":
+            return self.activate()
+        if act == "run":
+            c = self.ask("Esegui comando", "Comando (nella cartella %s):" % self.cwd)
+            if c:
+                self.run_ext(c, pause=True)
+            return
+        if act == "shell":
+            return self.run_ext("echo 'Scrivi exit per tornare alla Shell.'; exec bash")
+        if act == "btop":
+            return self.run_ext("btop || htop || top")
+        if act == "df":
+            return self.capture("Spazio su disco", "df -h -x tmpfs -x devtmpfs")
+        if act == "free":
+            return self.capture("Memoria", "free -h; echo; uptime")
+        if act == "net":
+            return self.capture("Rete", "ip -br addr; echo; ip route")
+        if act == "who":
+            return self.capture("Utenti collegati", "who -a 2>/dev/null || who")
+        if act == "journal":
+            return self.capture("Log di sistema", "journalctl -n 300 --no-pager")
+        if act == "edit_prog":
+            return self.run_ext("nano '%s'" % PROG_CONF)
+        if act == "edit_svc":
+            return self.run_ext("nano '%s'" % SVC_CONF)
+        if act == "svc_all":
+            return self.capture("Servizi attivi",
+                                "systemctl list-units --type=service --state=running --no-pager")
+        if act.startswith("svc_"):
+            return self.svc_action(act[4:])
+        if act == "reboot":
+            if self.confirm("Riavvio del server", "Riavviare il server adesso?", "",
+                            "Jellyfin, Pi-hole, VPN e Samba si fermano per 1-2 minuti",
+                            "e questa connessione verrà chiusa."):
+                self.run_ext("systemctl reboot", pause=True)
+            return
+        if act == "poweroff":
+            if self.confirm("Spegnimento del server", "Spegnere il server adesso?", "",
+                            "Dovrai riaccenderlo a mano: da remoto non si può.") and \
+               self.confirm("Spegnimento del server", "Sei proprio sicuro di voler spegnere?"):
+                self.run_ext("systemctl poweroff", pause=True)
+            return
+        if act == "mkdir":
+            n = self.ask("Nuova cartella", "Nome della cartella da creare in %s:" % self.cwd)
+            if n:
+                try:
+                    os.makedirs(os.path.join(self.cwd, n))
+                except OSError as e:
+                    self.info("Errore", str(e))
+                self.cache.clear()
+                self.set_dir(self.cwd, keep=n)
+            return
+        # da qui: operazioni su un file o una cartella
+        t = self.target()
+        if not t:
+            return self.info("Nessuna selezione", "Seleziona prima un file o una cartella.")
+        name = os.path.basename(t) or "/"
+        try:
+            if act == "view":
+                if os.path.isdir(t):
+                    return self.capture(t, "ls -la --color=never '%s'" % t.replace("'", "'\\''"))
+                with open(t, "rb") as f:
+                    data = f.read(1024 * 1024 + 1)
+                txt = data[: 1024 * 1024].decode("utf-8", "replace").replace("\x00", "·")
+                if len(data) > 1024 * 1024:
+                    txt += "\n\n[... file troncato: mostrato solo il primo MB ...]"
+                return self.viewer(t, txt)
+            if act == "edit":
+                if os.path.isdir(t):
+                    return self.info("Modifica", "È una cartella, non un file.")
+                return self.run_ext("nano '%s'" % t.replace("'", "'\\''"))
+            if act in ("copy", "move"):
+                word = "Copia" if act == "copy" else "Sposta / Rinomina"
+                dest = self.ask(word, "%s «%s» in:" % (word, name), t)
+                if not dest or dest == t:
+                    return
+                dest = os.path.expanduser(dest)
+                if not os.path.isabs(dest):
+                    dest = os.path.join(self.cwd, dest)
+                if os.path.isdir(dest):
+                    dest = os.path.join(dest, name)
+                if os.path.exists(dest) and not self.confirm(word, "Esiste già:", dest, "", "Sovrascrivere?"):
+                    return
+                if act == "move" and (t in PROTECTED or os.path.ismount(t)):
+                    return self.info(word, "Cartella di sistema: non la sposto.")
+                if act == "copy":
+                    if os.path.isdir(t):
+                        shutil.copytree(t, dest, symlinks=True, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(t, dest)
+                else:
+                    shutil.move(t, dest)
+                self.cache.clear()
+                return self.set_dir(self.cwd if os.path.isdir(self.cwd) else os.path.dirname(dest))
+            if act == "delete":
+                if t in PROTECTED or os.path.ismount(t):
+                    return self.info("Elimina", "Cartella di sistema o disco: non la elimino.")
+                isd = os.path.isdir(t) and not os.path.islink(t)
+                if isd:
+                    n = sum(len(f) + len(d) for _, d, f in os.walk(t))
+                    if not self.confirm("Elimina cartella", "Eliminare la cartella", "  " + t,
+                                        "con tutto il contenuto (%d elementi)?" % n, "",
+                                        "Non si può annullare."):
+                        return
+                    shutil.rmtree(t)
+                    self.cache.clear()
+                    return self.set_dir(os.path.dirname(t) if self.cwd.startswith(t) else self.cwd)
+                if self.confirm("Elimina", "Eliminare il file", "  " + t, "", "Non si può annullare."):
+                    os.remove(t)
+                    self.load_files()
+                return
+        except (OSError, shutil.Error) as e:
+            self.info("Errore", *str(e)[:300].split("\n")[:6])
+            self.cache.clear()
+            self.set_dir(self.cwd)
+
+    def activate(self):
+        p = self.panes[self.focus]
+        it = p.cur()
+        if not it:
+            return
+        if p is self.tree:
+            self.toggle(it[0])
+        elif p is self.files:
+            name, isd = it[0], it[1]
+            if name == "..":
+                old = os.path.basename(self.cwd)
+                self.set_dir(os.path.dirname(self.cwd), keep=old)
+            elif isd:
+                self.set_dir(os.path.join(self.cwd, name))
+            elif it[4]:
+                c = self.choose(name, ["Esegui", "Visualizza", "Modifica"])
+                if c == 0:
+                    self.run_ext("./'%s'" % name.replace("'", "'\\''"), pause=True)
+                elif c > 0:
+                    self.do("view" if c == 1 else "edit")
+            else:
+                self.do("view")
+        elif p is self.progs:
+            self.run_prog()
+        else:
+            c = self.choose(it[1], ["Avvia", "Ferma", "Riavvia", "Stato dettagliato", "Ultimi log"])
+            if c >= 0:
+                self.svc_action(["start", "stop", "restart", "status", "log"][c])
+
+    def toggle(self, path, want=None):
+        op = path in self.expanded
+        if want is None:
+            want = not op
+        if want:
+            self.expanded.add(path)
+        else:
+            self.expanded = {e for e in self.expanded if e != path and not e.startswith(path.rstrip("/") + "/")}
+        self.build_tree()
+        self.tree.fix()
+
+    def moved(self, p):
+        p.fix()
+        if p is self.tree and p.items:
+            self.cwd = p.items[p.sel][0]
+            self.load_files()
+
+    def on_mouse(self):
+        try:
+            _, x, y, _, b = curses.getmouse()
+        except curses.error:
+            return
+        under = [i for i, p in enumerate(self.panes) if p.inside(y, x)]
+        if b & (WHEEL_UP | WHEEL_DN):
+            if under:
+                p = self.panes[under[0]]
+                p.sel += -3 if b & WHEEL_UP else 3
+                self.moved(p)
+            return
+        if not b & CLICK:
+            return
+        if y == 1:
+            for i, (a, z) in enumerate(self.menu_pos):
+                if a <= x < z:
+                    return self.do(self.menu(i))
+            return
+        if y == 2:
+            for a, z, mp in self.drive_pos:
+                if a <= x < z:
+                    return self.set_dir(mp)
+            return
+        if y == self.H - 1:
+            for a, z, act in self.fkey_pos:
+                if a <= x < z:
+                    return self.do(act)
+            return
+        if not under:
+            return
+        self.focus = under[0]
+        p = self.panes[self.focus]
+        r = y - p.y - 1
+        if r < 0 or r >= p.rows:
+            return
+        if x == p.x + p.w - 1:
+            p.sel += -p.rows if r < p.rows // 2 else p.rows
+            return self.moved(p)
+        i = p.top + r
+        if i >= len(p.items):
+            return
+        now = time.time()
+        dbl = bool(b & curses.BUTTON1_DOUBLE_CLICKED) or \
+            (self.last_click[0] is p and self.last_click[1] == i and now - self.last_click[2] < 0.45)
+        self.last_click = (p, i, 0.0 if dbl else now)
+        p.sel = i
+        self.moved(p)
+        if p is self.tree:
+            path, prefix, _ = p.items[i]
+            cx = x - p.x - 1 - len(prefix)
+            if 0 <= cx <= 2 or dbl:
+                self.toggle(path)
+        elif dbl:
+            self.activate()
+
+    def loop(self):
+        fmap = {curses.KEY_F1: "help", curses.KEY_F2: "refresh", curses.KEY_F3: "view",
+                curses.KEY_F4: "edit", curses.KEY_F5: "copy", curses.KEY_F6: "move",
+                curses.KEY_F7: "mkdir", curses.KEY_F8: "delete", curses.KEY_F9: "menu",
+                curses.KEY_F10: "quit"}
+        while True:
+            self.draw()
+            self.scr.refresh()
+            k = self.key()
+            if k is None or k == curses.KEY_RESIZE:
+                continue
+            if self.small:
+                if k == curses.KEY_F10 or k == ESC:
+                    return
+                continue
+            p = self.panes[self.focus]
+            if k == curses.KEY_MOUSE:
+                self.on_mouse()
+            elif k in fmap:
+                self.do(fmap[k])
+            elif k == ESC:
+                self.scr.timeout(40)
+                k2 = self.key()
+                self.scr.timeout(1000)
+                if isinstance(k2, str):
+                    for i, (name, _) in enumerate(MENUS):
+                        if name[0].lower() == k2.lower():
+                            self.do(self.menu(i))
+            elif k == "\t":
+                self.focus = (self.focus + 1) % 4
+            elif k == curses.KEY_BTAB:
+                self.focus = (self.focus - 1) % 4
+            elif k in (curses.KEY_UP, curses.KEY_DOWN, curses.KEY_PPAGE, curses.KEY_NPAGE,
+                       curses.KEY_HOME, curses.KEY_END):
+                p.sel = {curses.KEY_UP: p.sel - 1, curses.KEY_DOWN: p.sel + 1,
+                         curses.KEY_PPAGE: p.sel - p.rows, curses.KEY_NPAGE: p.sel + p.rows,
+                         curses.KEY_HOME: 0, curses.KEY_END: len(p.items) - 1}[k]
+                self.moved(p)
+            elif k in ENTER:
+                self.activate()
+            elif p is self.tree and k in (curses.KEY_RIGHT, "+"):
+                if p.cur():
+                    self.toggle(p.cur()[0], True)
+            elif p is self.tree and k in (curses.KEY_LEFT, "-"):
+                if p.cur():
+                    path = p.cur()[0]
+                    if path in self.expanded and self.subdirs(path):
+                        self.toggle(path, False)
+                    elif path != "/":
+                        self.set_dir(os.path.dirname(path))
+            elif k == curses.KEY_RIGHT:
+                self.focus = (self.focus + 1) % 4
+            elif k == curses.KEY_LEFT:
+                self.focus = (self.focus - 1) % 4
+            elif p is self.files and k in BKSP:
+                if self.cwd != "/":
+                    self.set_dir(os.path.dirname(self.cwd), keep=os.path.basename(self.cwd))
+            elif isinstance(k, str) and k.isprintable() and k != " ":
+                def label(it):
+                    return (it[2] if p is self.tree else it[1] if p is self.svcs else it[0]).lower()
+                n = len(p.items)
+                for j in range(1, n + 1):
+                    i = (p.sel + j) % n
+                    if label(p.items[i]).startswith(k.lower()):
+                        p.sel = i
+                        self.moved(p)
+                        break
+
+
+def main():
+    if not (sys.stdin.isatty() and sys.stdout.isatty()) or os.environ.get("TERM", "dumb") == "dumb":
+        sys.exit("dshell va avviato da un terminale interattivo (es. ssh -t root@server D).")
+    os.environ.setdefault("ESCDELAY", "25")
+    try:
+        curses.wrapper(lambda scr: Shell(scr).loop())
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()

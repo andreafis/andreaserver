@@ -1,0 +1,72 @@
+#!/bin/bash
+# backup-server: salva configurazione e lista programmi del AndreaServer
+# (NON salva media né indice Jellyfin). Tiene gli ultimi 10 backup.
+set -u
+DEST=@@INDEX_MOUNT@@/backup-server
+KEEP=10
+TS=$(date +%Y-%m-%d_%H%M)
+WORK=$(mktemp -d /tmp/backup-server.XXXXXX)
+OUT="$DEST/andreaserver_$TS.tar.gz"
+O='\e[38;5;208m■\e[0m'; G='\e[92m'; R='\e[91m'; N='\e[0m'
+trap 'rm -rf "$WORK"' EXIT
+
+ls "${DEST%/*}" >/dev/null 2>&1 && mountpoint -q "${DEST%/*}" || { echo -e "${R}Disco Indice non disponibile${N}"; exit 1; }
+mkdir -p "$DEST" && chmod 700 "$DEST"
+echo -e "$O Backup configurazione in corso..."
+
+# 1. Elenco programmi
+mkdir -p "$WORK/programmi"
+dpkg --get-selections            > "$WORK/programmi/dpkg-selections.txt"
+apt-mark showmanual              > "$WORK/programmi/apt-manuali.txt"
+grep '=2' /boot/dietpi/.installed > "$WORK/programmi/dietpi-software-installati.txt" 2>/dev/null
+cp -a /etc/apt/sources.list /etc/apt/sources.list.d "$WORK/programmi/" 2>/dev/null
+{ pihole -v; jellyfin --version 2>/dev/null; cat /boot/dietpi/.version; } > "$WORK/programmi/versioni.txt" 2>&1
+
+# 2. Export Pi-hole (ripristinabile da interfaccia web: Impostazioni > Teleporter)
+mkdir -p "$WORK/pihole"
+( cd "$WORK/pihole" && pihole-FTL --teleporter >/dev/null 2>&1 )
+
+# 3. File di configurazione
+crontab -l > "$WORK/crontab-root.txt" 2>/dev/null
+tar -czf "$WORK/config.tar.gz" --ignore-failed-read \
+  --exclude=/etc/pihole/pihole-FTL.db --exclude=/etc/pihole/gravity.db* \
+  /etc \
+  /boot/dietpi.txt /boot/dietpi/.installed /boot/dietpi/.version /boot/dietpi/.dietpi-banner \
+  /usr/local/bin /opt/console-andreaserver \
+  /root \
+  /mnt/dietpi_userdata/*.ovpn \
+  2>/dev/null
+
+# 4. Istruzioni di ripristino
+cat > "$WORK/LEGGIMI.txt" <<'EOF'
+BACKUP ANDREASERVER - come ripristinare dopo una reinstallazione
+
+1. Installa DietPi da zero e completa il primo avvio.
+2. Reinstalla i programmi DietPi: gli ID sono in programmi/dietpi-software-installati.txt
+   (pihole, jellyfin, wireguard, openvpn, sambaserver, dropbear, ...) con dietpi-software.
+3. Estrai le configurazioni in una cartella di appoggio e copia quello che serve:
+     mkdir /root/ripristino && tar -xzf config.tar.gz -C /root/ripristino
+   Le più importanti:
+     /etc/wireguard        (chiavi server dei client: i client continuano a funzionare)
+     /etc/openvpn
+     /etc/samba/smb.conf
+     /etc/jellyfin         (impostazioni, NON la libreria)
+     /etc/fstab            (montaggio dischi Media e Indice)
+     /etc/cron.d, /etc/bashrc.d/zz-banner-andreaserver.sh, /root/.hushlogin, /root/duckdns
+     /usr/local/bin        (banner-andreaserver, K, k, backup-server)
+     crontab-root.txt      -> crontab crontab-root.txt
+4. Pi-hole: interfaccia web > Impostazioni > Teleporter > importa il file .zip in pihole/
+5. Pacchetti extra installati a mano: programmi/apt-manuali.txt
+6. Riavvia.
+
+ATTENZIONE: il backup contiene chiavi private (WireGuard, OpenVPN, SSH). Tienilo al sicuro.
+EOF
+
+# Archivio finale
+tar -czf "$OUT" -C "$WORK" . && chmod 600 "$OUT" || { echo -e "${R}Errore nel creare il backup${N}"; exit 1; }
+
+# Rotazione: tieni solo gli ultimi $KEEP
+ls -1t "$DEST"/andreaserver_*.tar.gz 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
+
+echo -e "$O ${G}Backup completato${N}: $OUT ($(du -h "$OUT" | cut -f1))"
+echo "   Backup salvati: $(ls -1 "$DEST"/andreaserver_*.tar.gz | wc -l) (si tengono gli ultimi $KEEP)"

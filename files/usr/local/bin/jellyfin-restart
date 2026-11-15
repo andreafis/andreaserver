@@ -1,0 +1,3 @@
+#!/bin/bash
+# k = riavvia Jellyfin
+systemctl restart jellyfin && echo -e "\e[92m●\e[0m Jellyfin riavviato" || echo "Errore nel riavviare Jellyfin"

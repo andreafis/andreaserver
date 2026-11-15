@@ -1,0 +1,8 @@
+# Mai nel repository: configurazione locale, backup, chiavi
+andreaserver.conf
+*.tar.gz
+*.key
+*.pem
+*.ovpn
+*.conf.local
+.DS_Store

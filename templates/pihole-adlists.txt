@@ -1,0 +1,4 @@
+https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+https://raw.githubusercontent.com/andyts93/pihole-italian-list/master/adlist.txt
+https://filippobuletto.github.io/pihole-hoax-sites-list/coronavirus-misinformation-tracking-center.txt
+https://filippobuletto.github.io/pihole-hoax-sites-list/the-black-list-la-lista-nera-del-web.txt

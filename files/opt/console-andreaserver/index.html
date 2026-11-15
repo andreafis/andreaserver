@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Console AndreaServer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000; --orange:#ff9c00; --peach:#ffcc99; --lilac:#cc99cc; --violet:#9977cc;
+  --blue:#99aaff; --sky:#66ccff; --gold:#ffaa33; --red:#ff5555; --green:#99dd66;
+  --text:#ffddb3; --dim:#8a7a66; --panel:#0d0b08; --line:#2a2218;
+  --r:34px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:"Antonio","Arial Narrow",sans-serif;letter-spacing:.04em;font-size:17px;-webkit-font-smoothing:antialiased}
+.frame{display:grid;grid-template-columns:150px 1fr;grid-template-rows:auto 1fr auto;min-height:100vh;gap:0 8px;padding:10px}
+/* angolo superiore */
+.elbow-top{grid-column:1;grid-row:1;background:var(--orange);border-top-left-radius:var(--r);height:110px;position:relative}
+.elbow-top::after{content:"";position:absolute;right:-8px;bottom:0;width:30px;height:30px;background:var(--orange)}
+.elbow-top::before{content:"";position:absolute;right:-38px;bottom:0;width:30px;height:30px;background:var(--bg);border-top-left-radius:22px;z-index:2}
+.head{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:space-between;height:110px}
+.title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:46px;line-height:1;color:var(--orange);text-transform:uppercase;font-weight:700;letter-spacing:.06em}
+.clock{text-align:right;color:var(--peach);font-size:20px;text-transform:uppercase}
+.clock b{display:block;font-size:34px;color:var(--gold)}
+.bar-row{display:flex;gap:6px;height:30px}
+.bar-row span{display:block;height:30px}
+/* barra laterale */
+.side{grid-column:1;grid-row:2;display:flex;flex-direction:column;gap:6px;padding-top:6px}
+.side a{display:flex;align-items:flex-end;justify-content:flex-end;padding:6px 12px;min-height:56px;color:#000;text-decoration:none;font-weight:600;text-transform:uppercase;font-size:17px;cursor:pointer}
+.side a:hover{filter:brightness(1.2)}
+.side .fill{flex:1;background:var(--lilac);min-height:40px}
+.side .code{font-size:13px;opacity:.7;margin-right:auto;align-self:flex-start}
+.elbow-bot{grid-column:1;grid-row:3;background:var(--violet);border-bottom-left-radius:var(--r);height:70px;margin-top:6px;position:relative}
+.foot{grid-column:2;grid-row:3;display:flex;gap:6px;align-items:flex-end;margin-top:6px}
+.foot span{height:30px;display:block}
+.foot .txt{flex:1;color:var(--dim);font-size:14px;align-self:center;text-transform:uppercase;padding-left:8px}
+main{grid-column:2;grid-row:2;padding:14px 4px 6px 30px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;align-content:start}
+/* pannelli */
+.panel{background:var(--panel);border-left:10px solid var(--c,var(--orange));border-radius:0 18px 18px 0;padding:12px 16px 14px;position:relative;min-width:0}
+.panel h2{margin:0 0 10px;font-size:22px;text-transform:uppercase;color:var(--c,var(--orange));display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.panel h2 small{color:var(--dim);font-size:13px;font-weight:400}
+.wide{grid-column:1/-1}
+@media(min-width:1100px){.span2{grid-column:span 2}}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:16px}
+.kv dt{color:var(--dim);text-transform:uppercase}
+.kv dd{margin:0;text-align:right;color:var(--text);font-variant-numeric:tabular-nums}
+.big{font-size:44px;line-height:1;color:var(--c,var(--orange));font-weight:700;font-variant-numeric:tabular-nums}
+.big small{font-size:18px;color:var(--dim);font-weight:400}
+.row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.meter{height:14px;background:#1d1812;border-radius:7px;overflow:hidden;margin:4px 0 8px}
+.meter i{display:block;height:100%;background:var(--c,var(--orange));border-radius:7px;transition:width .6s}
+.cores{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+.core{text-align:center;font-size:13px;color:var(--dim)}
+.core .vbar{height:54px;background:#1d1812;border-radius:6px;position:relative;overflow:hidden;margin-bottom:3px}
+.core .vbar i{position:absolute;bottom:0;left:0;right:0;background:var(--c,var(--orange));transition:height .6s}
+.core b{display:block;color:var(--text);font-size:15px}
+canvas{width:100%;height:70px;display:block}
+.chart-label{display:flex;justify-content:space-between;font-size:13px;color:var(--dim);text-transform:uppercase;margin-top:6px}
+.chart-label b{color:var(--text);font-weight:400}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:3px 4px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+th{color:var(--dim);font-weight:400;text-transform:uppercase;font-size:13px;border-bottom:1px solid var(--line)}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+tr+tr td{border-top:1px solid #17130e}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 12px 3px 4px;border-radius:14px;background:#1a150f;margin:0 6px 6px 0;font-size:15px}
+.pill::before{content:"";width:14px;height:14px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+.pill.off::before{background:var(--red);box-shadow:0 0 8px var(--red)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#3a3026;margin-right:6px}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.ok{color:var(--green)} .warn{color:var(--gold)} .bad{color:var(--red)} .dim{color:var(--dim)}
+.blink{animation:blink 1s steps(2,start) infinite;color:var(--red)}
+@keyframes blink{to{visibility:hidden}}
+.btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+button{font-family:inherit;font-size:18px;letter-spacing:.05em;text-transform:uppercase;border:0;border-radius:22px;padding:10px 18px;text-align:right;color:#000;background:var(--b,var(--peach));cursor:pointer;font-weight:600;min-height:44px}
+button:hover{filter:brightness(1.15)} button:active{transform:scale(.97)}
+button:disabled{opacity:.4;cursor:wait}
+.out{margin-top:10px;font-size:14px;color:var(--peach);white-space:pre-wrap;max-height:140px;overflow:auto;font-family:ui-monospace,Menlo,monospace;letter-spacing:0}
+.rain{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;align-items:end;height:70px;margin-top:8px}
+.rain div{background:var(--sky);border-radius:3px 3px 0 0;min-height:2px;position:relative}
+.rain-l{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;font-size:11px;color:var(--dim);text-align:center}
+.compass{width:64px;height:64px;border:3px solid var(--blue);border-radius:50%;position:relative;flex:none}
+.compass i{position:absolute;left:50%;top:50%;width:4px;height:28px;background:var(--gold);transform-origin:50% 0;border-radius:2px}
+.compass span{position:absolute;top:-2px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--blue)}
+dialog{background:#000;border:0;border-left:12px solid var(--orange);border-radius:0 24px 24px 0;color:var(--text);padding:20px 24px;font-family:inherit;max-width:90vw}
+dialog::backdrop{background:rgba(0,0,0,.75)}
+dialog h3{margin:0 0 12px;color:var(--orange);text-transform:uppercase;font-size:24px}
+dialog input{font-family:inherit;font-size:20px;background:#1a150f;border:0;border-radius:14px;color:var(--text);padding:10px 14px;width:100%;margin-bottom:12px}
+dialog .dl-btns{display:flex;gap:8px;justify-content:flex-end}
+.err{position:fixed;top:12px;right:12px;background:var(--red);color:#000;padding:8px 16px;border-radius:16px;font-weight:600;display:none;z-index:9}
+@media(max-width:700px){
+  .frame{grid-template-columns:44px 1fr;padding:6px}
+  .side a{font-size:0;min-height:44px;padding:0}
+  .side a .code{display:none}
+  h1{font-size:30px}
+  .clock b{font-size:24px} .clock{font-size:14px}
+  .head,.elbow-top{height:90px}
+  main{padding:10px 0 6px 14px;grid-template-columns:1fr}
+  .foot .txt{font-size:11px}
+}
+</style>
+</head>
+<body>
+<div class="err" id="err">CONNESSIONE PERSA</div>
+<div class="frame">
+  <div class="elbow-top"></div>
+  <header class="head">
+    <div class="title-row">
+      <h1>AndreaServer</h1>
+      <div class="clock"><b id="time">--:--:--</b><span id="date"></span></div>
+    </div>
+    <div class="bar-row">
+      <span style="flex:3;background:var(--orange)"></span>
+      <span style="flex:1;background:var(--peach)"></span>
+      <span style="flex:2;background:var(--lilac)"></span>
+      <span style="flex:.6;background:var(--blue)"></span>
+      <span style="flex:1.4;background:var(--gold);border-radius:0 15px 15px 0"></span>
+    </div>
+  </header>
+  <nav class="side">
+    <a style="background:var(--peach)" data-go="p-sys"><span class="code">01</span>Sistema</a>
+    <a style="background:var(--lilac)" data-go="p-net"><span class="code">02</span>Rete</a>
+    <a style="background:var(--blue)" data-go="p-dns"><span class="code">03</span>Pi-hole</a>
+    <a style="background:var(--gold)" data-go="p-vpn"><span class="code">04</span>VPN</a>
+    <a style="background:var(--orange)" data-go="p-disk"><span class="code">05</span>Dischi</a>
+    <a style="background:var(--sky)" data-go="p-wx"><span class="code">06</span>Meteo</a>
+    <a style="background:var(--red)" data-go="p-cmd"><span class="code">07</span>Comandi</a>
+    <div class="fill"></div>
+  </nav>
+
+  <main id="main">
+    <!-- SISTEMA -->
+    <section class="panel span2" id="p-sys" style="--c:var(--peach)">
+      <h2>Sistema <small id="cpu-model"></small></h2>
+      <div class="row" style="justify-content:space-between">
+        <div><div class="big" id="cpu">--<small>%</small></div><div class="dim">CPU</div></div>
+        <div><div class="big" style="--c:var(--gold)" id="temp">--<small>°C</small></div><div class="dim">Temperatura</div></div>
+        <div><div class="big" style="--c:var(--lilac)" id="ram">--<small>%</small></div><div class="dim">RAM</div></div>
+        <div><div class="big" style="--c:var(--blue)" id="load">--</div><div class="dim">Load 1 · 5 · 15 min</div></div>
+      </div>
+      <div class="cores" id="cores"></div>
+      <div class="chart-label"><span>CPU · 6 min</span><b id="cpu-l"></b></div><canvas id="c-cpu"></canvas>
+      <div class="chart-label"><span>Temperatura core · 6 min</span><b id="temp-l"></b></div><canvas id="c-temp"></canvas>
+      <div class="chart-label"><span>RAM · 6 min</span><b id="ram-l"></b></div><canvas id="c-ram"></canvas>
+      <dl class="kv" style="margin-top:10px" id="sys-kv"></dl>
+    </section>
+
+    <!-- SERVIZI -->
+    <section class="panel" style="--c:var(--green)">
+      <h2>Servizi <small id="svc-sum"></small></h2>
+      <div id="svc"></div>
+      <h2 style="margin-top:12px;--c:var(--gold)">Sensori <small>°C</small></h2>
+      <dl class="kv" id="sensors"></dl>
+    </section>
+
+    <!-- RETE -->
+    <section class="panel" id="p-net" style="--c:var(--lilac)">
+      <h2>Rete <small id="ips"></small></h2>
+      <div id="nets"></div>
+    </section>
+
+    <!-- PI-HOLE -->
+    <section class="panel span2" id="p-dns" style="--c:var(--blue)">
+      <h2>Pi-hole <small>oggi</small></h2>
+      <div class="row" style="justify-content:space-between">
+        <div><div class="big" id="ph-total">--</div><div class="dim">Query</div></div>
+        <div><div class="big" style="--c:var(--red)" id="ph-blocked">--</div><div class="dim">Bloccate</div></div>
+        <div><div class="big" style="--c:var(--gold)" id="ph-pct">--<small>%</small></div><div class="dim">Percentuale</div></div>
+        <div><div class="big" style="--c:var(--lilac)" id="ph-grav">--</div><div class="dim">Domini in lista</div></div>
+      </div>
+      <div class="chart-label"><span>Query 24 ore · <span style="color:var(--blue)">totali</span> / <span style="color:var(--red)">bloccate</span></span><b id="ph-l"></b></div>
+      <canvas id="c-ph" style="height:90px"></canvas>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:10px">
+        <div><table><thead><tr><th>Client attivi · 10 min</th><th></th><th class="n">Query</th></tr></thead><tbody id="ph-clients"></tbody></table></div>
+        <div><table><thead><tr><th>Domini più richiesti</th><th class="n"></th></tr></thead><tbody id="ph-top"></tbody></table></div>
+        <div><table><thead><tr><th>Più bloccati</th><th class="n"></th></tr></thead><tbody id="ph-topb"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- VPN -->
+    <section class="panel" id="p-vpn" style="--c:var(--gold)">
+      <h2>WireGuard <small id="wg-sum"></small></h2>
+      <table><thead><tr><th>Client</th><th>Ultimo contatto</th><th class="n">↓ / ↑</th></tr></thead><tbody id="wg"></tbody></table>
+    </section>
+
+    <!-- DISCHI -->
+    <section class="panel" id="p-disk" style="--c:var(--orange)">
+      <h2>Dischi</h2>
+      <div id="disks"></div>
+    </section>
+
+    <!-- METEO -->
+    <section class="panel" id="p-wx" style="--c:var(--sky)">
+      <h2>Meteo · @@CITY@@ <small id="wx-ts"></small></h2>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div><div class="big" id="wx-temp">--<small>°C</small></div><div class="dim" id="wx-desc"></div></div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="compass"><span>N</span><i id="wx-arrow"></i></div>
+          <div><div style="font-size:24px;color:var(--gold)" id="wx-wind">--</div><div class="dim" id="wx-wind2"></div></div>
+        </div>
+      </div>
+      <dl class="kv" style="margin-top:10px" id="wx-kv"></dl>
+      <div class="chart-label"><span>Probabilità pioggia · 12 ore</span><b id="wx-rmax"></b></div>
+      <div class="rain" id="wx-rain"></div><div class="rain-l" id="wx-rain-l"></div>
+    </section>
+
+    <!-- PROCESSI -->
+    <section class="panel" style="--c:var(--violet)">
+      <h2>Processi <small>per CPU</small></h2>
+      <table><thead><tr><th>Nome</th><th class="n">CPU</th><th class="n">MEM</th><th class="n">RSS</th></tr></thead><tbody id="procs"></tbody></table>
+    </section>
+
+    <!-- AGGIORNAMENTI E BACKUP -->
+    <section class="panel" style="--c:var(--peach)">
+      <h2>Stato e backup</h2>
+      <div id="upd"></div>
+      <dl class="kv" style="margin-top:8px" id="vers"></dl>
+    </section>
+
+    <!-- COMANDI -->
+    <section class="panel wide" id="p-cmd" style="--c:var(--red)">
+      <h2>Comandi <small>richiedono la password</small></h2>
+      <div class="btns">
+        <button style="--b:var(--red)" data-act="jellyfin_stop" data-ask="Fermare Jellyfin?">Ferma Jellyfin</button>
+        <button style="--b:var(--green)" data-act="jellyfin_start">Avvia Jellyfin</button>
+        <button style="--b:var(--orange)" data-act="jellyfin_restart" data-ask="Riavviare Jellyfin?">Riavvia Jellyfin</button>
+        <button style="--b:var(--gold)" data-act="backup">Backup ora</button>
+        <button style="--b:var(--blue)" data-act="gravity">Aggiorna liste Pi-hole</button>
+        <button style="--b:var(--lilac)" id="logout">Dimentica password</button>
+      </div>
+      <div class="out" id="out"></div>
+    </section>
+  </main>
+
+  <div class="elbow-bot"></div>
+  <footer class="foot">
+    <span style="width:120px;background:var(--violet)"></span>
+    <span style="width:40px;background:var(--blue)"></span>
+    <div class="txt" id="foot">In collegamento…</div>
+    <span style="width:80px;background:var(--orange);border-radius:0 15px 15px 0"></span>
+  </footer>
+</div>
+
+<dialog id="dlg">
+  <h3 id="dlg-t">Autorizzazione</h3>
+  <div id="dlg-msg" class="dim" style="margin-bottom:10px"></div>
+  <input type="password" id="dlg-pw" placeholder="Password" autocomplete="current-password">
+  <div class="dl-btns"><button style="--b:#555;color:#fff" id="dlg-no">Annulla</button><button style="--b:var(--orange)" id="dlg-ok">Esegui</button></div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const GG = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+const MM = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+const WMO = {0:"Sereno",1:"Quasi sereno",2:"Parz. nuvoloso",3:"Coperto",45:"Nebbia",48:"Nebbia gelata",51:"Pioviggine",53:"Pioviggine",55:"Pioviggine forte",61:"Pioggia debole",63:"Pioggia",65:"Pioggia forte",71:"Neve debole",73:"Neve",75:"Neve forte",80:"Rovesci",81:"Rovesci",82:"Rovesci forti",95:"Temporale",96:"Temporale con grandine",99:"Temporale con grandine"};
+
+function bytes(n, d=1){ if(n==null) return "-"; const u=["B","KB","MB","GB","TB"]; let i=0; while(n>=1024&&i<4){n/=1024;i++} return n.toFixed(i?d:0)+" "+u[i]; }
+function rate(n){ return bytes(n) + "/s"; }
+function ago(s){ if(s==null) return "mai"; if(s<60) return s+" s fa"; if(s<3600) return Math.floor(s/60)+" min fa"; if(s<86400) return Math.floor(s/3600)+" h fa"; return Math.floor(s/86400)+" g fa"; }
+function dur(s){ const g=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60); return (g?g+"g ":"")+h+"h "+m+"m"; }
+function lvl(v, a, b){ return v>=b ? "var(--red)" : v>=a ? "var(--gold)" : null; }
+
+function spark(id, series, opts={}){
+  const c = $(id); if(!c) return;
+  const dpr = window.devicePixelRatio||1, w = c.clientWidth, h = c.clientHeight;
+  c.width = w*dpr; c.height = h*dpr;
+  const x = c.getContext("2d"); x.scale(dpr,dpr); x.clearRect(0,0,w,h);
+  x.strokeStyle = "#1d1812"; x.lineWidth = 1;
+  for(let i=1;i<4;i++){ x.beginPath(); x.moveTo(0,h*i/4); x.lineTo(w,h*i/4); x.stroke(); }
+  const all = series.flatMap(s=>s.data); if(!all.length) return;
+  const max = opts.max ?? Math.max(1, ...all) * 1.1, min = opts.min ?? 0;
+  series.forEach(s=>{
+    const d = s.data, n = opts.len || d.length; if(!d.length) return;
+    const px = i => w - (d.length-1-i) * (w/(Math.max(n,2)-1)), py = v => h - (v-min)/(max-min) * (h-4) - 2;
+    x.beginPath(); d.forEach((v,i)=> i ? x.lineTo(px(i),py(v)) : x.moveTo(px(i),py(v)));
+    x.strokeStyle = s.color; x.lineWidth = 2; x.stroke();
+    if(s.fill){ x.lineTo(px(d.length-1),h); x.lineTo(px(0),h); x.closePath(); x.fillStyle = s.color+"33"; x.fill(); }
+  });
+}
+
+function bars(id, rows){ // istogramma per Pi-hole
+  const c = $(id); const dpr = window.devicePixelRatio||1, w=c.clientWidth, h=c.clientHeight;
+  c.width=w*dpr; c.height=h*dpr; const x=c.getContext("2d"); x.scale(dpr,dpr);
+  if(!rows.length) return; const max = Math.max(...rows.map(r=>r[1]),1), bw = w/rows.length;
+  rows.forEach((r,i)=>{ const th=r[1]/max*(h-2), bh=r[2]/max*(h-2);
+    x.fillStyle=css("--blue"); x.fillRect(i*bw+1,h-th,bw-2,th);
+    x.fillStyle=css("--red"); x.fillRect(i*bw+1,h-bh,bw-2,bh); });
+}
+
+function tick(){
+  const d = new Date();
+  $("time").textContent = d.toLocaleTimeString("it-IT");
+  $("date").textContent = GG[d.getDay()]+" "+d.getDate()+" "+MM[d.getMonth()]+" "+d.getFullYear();
+}
+setInterval(tick, 1000); tick();
+
+let failures = 0;
+async function load(){
+  try{
+    const r = await fetch("/api/data", {cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    render(await r.json()); failures = 0; $("err").style.display = "none";
+  }catch(e){ if(++failures > 1) $("err").style.display = "block"; }
+}
+
+function render(D){
+  const F = D.fast||{}, S = D.slow||{}, W = D.meteo||{}, H = D.hist||{};
+  if(F.cpu!=null){
+    $("cpu").innerHTML = Math.round(F.cpu)+"<small>%</small>";
+    const coreT = Object.entries(F.temps||{}).filter(([k])=>k.startsWith("Core")).map(([,v])=>v);
+    const tmax = coreT.length ? Math.max(...coreT) : null;
+    $("temp").innerHTML = (tmax??"--")+"<small>°C</small>";
+    $("temp").style.setProperty("--c", lvl(tmax,60,75) || "var(--gold)");
+    const m = F.mem, rp = Math.round(100*m.used/m.total);
+    $("ram").innerHTML = rp+"<small>%</small>";
+    $("load").textContent = F.load.join(" · ");
+    $("cores").innerHTML = F.cores.map((v,i)=>{
+      const t = (F.temps||{})["Core "+i];
+      return `<div class="core"><div class="vbar"><i style="height:${v}%;${lvl(v,70,90)?"background:"+lvl(v,70,90):""}"></i></div><b>${Math.round(v)}%</b>Core ${i+1}${t?" · "+t+"°":""}</div>`;
+    }).join("");
+    spark("c-cpu",[{data:H.cpu||[],color:css("--peach"),fill:1}],{max:100,len:180});
+    spark("c-temp",[{data:H.temp||[],color:css("--gold"),fill:1}],{min:Math.min(...(H.temp||[30]))-3,max:Math.max(...(H.temp||[60]))+3,len:180});
+    spark("c-ram",[{data:H.ram||[],color:css("--lilac"),fill:1}],{max:100,len:180});
+    const avg = a => a&&a.length ? (a.reduce((x,y)=>x+y,0)/a.length).toFixed(0) : "-";
+    $("cpu-l").textContent = "media "+avg(H.cpu)+"% · picco "+Math.round(Math.max(0,...(H.cpu||[0])))+"%";
+    $("temp-l").textContent = "min "+Math.min(...(H.temp||[0]))+"° · max "+Math.max(...(H.temp||[0]))+"°";
+    $("ram-l").textContent = bytes(m.used)+" / "+bytes(m.total)+" · cache "+bytes(m.cache);
+    $("sensors").innerHTML = Object.entries(F.temps||{}).map(([k,v])=>`<dt>${esc(k)}</dt><dd style="color:${lvl(v,60,75)||"inherit"}">${v}°</dd>`).join("");
+    // rete
+    const lab = {"@@NIC@@":"LAN · @@NIC@@", wg0:"WireGuard · wg0", tun0:"OpenVPN · tun0"};
+    const nets = $("nets");
+    if(!nets.dataset.built){ nets.innerHTML = Object.keys(lab).map(k=>`<div class="chart-label"><span>${lab[k]}</span><b id="n-${k}"></b></div><canvas id="c-${k}" style="height:56px"></canvas>`).join("") + `<div class="chart-label" style="margin-top:10px"><span><span style="color:var(--sky)">↓ ricevuti</span> · <span style="color:var(--gold)">↑ inviati</span></span></div>`; nets.dataset.built=1; }
+    for(const k of Object.keys(lab)){
+      const n = (F.net||{})[k]; if(!n){ $("n-"+k).textContent="non attiva"; continue; }
+      $("n-"+k).textContent = "↓ "+rate(n.rx)+" · ↑ "+rate(n.tx);
+      spark("c-"+k,[{data:H[k+"_rx"]||[],color:css("--sky"),fill:1},{data:H[k+"_tx"]||[],color:css("--gold")}],{len:180});
+    }
+  }
+  if(S.pihole){
+    const P = S.pihole;
+    $("cpu-model").textContent = S.cpu_model||"";
+    $("ips").textContent = "LAN "+S.ips.lan+" · WAN "+(S.ips.wan||"-");
+    $("sys-kv").innerHTML = `<dt>Uptime</dt><dd>${dur(S.uptime)}</dd><dt>Swap</dt><dd>${bytes(F.mem?.swap_used)} / ${bytes(F.mem?.swap_total)}</dd><dt>Transcodifiche Jellyfin</dt><dd>${S.transcodes||0} attive</dd>`;
+    // servizi
+    const on = S.services.filter(s=>s.active).length;
+    $("svc-sum").textContent = on+" / "+S.services.length+" attivi";
+    $("svc").innerHTML = S.services.map(s=>`<span class="pill ${s.active?"":"off"}">${esc(s.name)}</span>`).join("");
+    // pihole
+    $("ph-total").textContent = P.total.toLocaleString("it-IT");
+    $("ph-blocked").textContent = P.blocked.toLocaleString("it-IT");
+    $("ph-pct").innerHTML = P.percent+"<small>%</small>";
+    $("ph-grav").textContent = P.gravity.toLocaleString("it-IT");
+    $("ph-l").textContent = "cache "+P.cached.toLocaleString("it-IT")+" · inoltrate "+P.forwarded.toLocaleString("it-IT")+" · "+P.unique+" domini unici";
+    bars("c-ph", P.history.slice(-144));
+    $("ph-clients").innerHTML = (S.clients.length ? S.clients.slice(0,8).map(c=>`<tr><td>${esc(c.name||c.ip)}</td><td class="dim">${c.net}</td><td class="n">${c.count}${c.blocked?` <span class="bad">(${c.blocked})</span>`:""}</td></tr>`).join("") : `<tr><td class="dim">Nessuno</td></tr>`);
+    $("ph-top").innerHTML = P.top.map(d=>`<tr><td title="${esc(d.domain)}">${esc(d.domain)}</td><td class="n">${d.count}</td></tr>`).join("");
+    $("ph-topb").innerHTML = P.top_blocked.length ? P.top_blocked.map(d=>`<tr><td class="bad" title="${esc(d.domain)}">${esc(d.domain)}</td><td class="n">${d.count}</td></tr>`).join("") : `<tr><td class="dim">Nessuno</td></tr>`;
+    // wireguard
+    const wgOn = S.wg.filter(p=>p.online).length;
+    $("wg-sum").textContent = wgOn+" online / "+S.wg.length;
+    const shown = S.wg.filter(p=>p.handshake).concat(S.wg.filter(p=>!p.handshake).slice(0,3));
+    $("wg").innerHTML = shown.map(p=>`<tr><td><span class="dot ${p.online?"on":""}"></span>${esc(p.name)} <span class="dim">${esc(p.ip)}</span></td><td class="${p.online?"ok":"dim"}">${ago(p.ago)}</td><td class="n">${p.handshake?bytes(p.tx)+" / "+bytes(p.rx):"-"}</td></tr>`).join("")
+      + (S.wg.length>shown.length ? `<tr><td class="dim" colspan="3">+ ${S.wg.length-shown.length} client mai collegati</td></tr>`:"");
+    // dischi
+    const devOf = {Sistema:"@@DISK_SYS@@", Media:"@@DISK_MEDIA@@", Indice:"@@DISK_INDEX@@"};
+    $("disks").innerHTML = S.disks.map(d=>{
+      const p = d.total ? Math.round(100*d.used/d.total) : 0, io = (F.io||{})[devOf[d.name]]||{};
+      let extra = "", col = d.name==="Media" ? "var(--orange)" : (lvl(p,80,92)||"var(--orange)");
+      if(d.name==="Media"){
+        const sm = S.smart;
+        extra = `<span class="dim">libreria</span>` + (sm ? ` · ${sm.temp}° · ${sm.health==="OK"?'<span class="ok">SMART OK</span>':'<span class="blink">████ SMART FAIL</span>'}` : "");
+      }
+      if(d.name==="Indice") extra = `<span class="dim">chiavetta USB</span>`;
+      return `<div class="chart-label"><span style="color:var(--text);font-size:16px">${d.name} ${extra}</span><b>${bytes(d.used)} / ${bytes(d.total)} · ${p}%</b></div>
+        <div class="meter" style="--c:${col}"><i style="width:${p}%"></i></div>
+        <div class="chart-label" style="margin:-4px 0 8px"><span>Lettura ${rate(io.r||0)}</span><span>Scrittura ${rate(io.w||0)}</span></div>`;
+    }).join("");
+    // processi
+    $("procs").innerHTML = S.procs.map(p=>`<tr><td>${esc(p.name)}</td><td class="n">${p.cpu.toFixed(1)}%</td><td class="n">${p.mem.toFixed(1)}%</td><td class="n">${bytes(p.rss,0)}</td></tr>`).join("");
+    // aggiornamenti e backup
+    const b = S.backup, bAge = b ? (D.now - b.ts) : null;
+    let html = S.updates.length
+      ? `<div><span class="blink">████</span> <b class="bad">Aggiornamenti disponibili</b></div>` + S.updates.map(u=>`<div style="margin:4px 0">${esc(u.what)} → <code style="color:var(--gold)">${esc(u.cmd)}</code></div>`).join("")
+      : `<div class="big" style="--c:var(--green);font-size:30px">Status OK</div><div class="dim">Nessun aggiornamento in sospeso</div>`;
+    html += `<div style="margin-top:10px">` + (b
+      ? (bAge < 8*86400 ? `Backup ${new Date(b.ts*1000).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} <b style="color:#ffef00">OK</b>` : `<span class="bad">Backup vecchio (${ago(Math.floor(bAge))})</span>`)
+        + ` <span class="dim">· ${bytes(b.size)} · ${b.count} salvati</span>`
+      : `<span class="bad">Nessun backup</span>`) + `</div>`;
+    $("upd").innerHTML = html;
+    $("vers").innerHTML = Object.entries(S.versions).map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+  }
+  if(W.temp!=null){
+    $("wx-temp").innerHTML = Math.round(W.temp)+"<small>°C</small>";
+    $("wx-desc").textContent = (WMO[W.code]||"")+" · percepita "+Math.round(W.feels)+"°";
+    $("wx-wind").textContent = W.vento;
+    $("wx-wind2").textContent = W.sigla+" · "+W.wind+" km/h · raffiche "+W.gust;
+    $("wx-arrow").style.transform = `rotate(${W.dir}deg)`;
+    $("wx-kv").innerHTML = `<dt>Min / Max oggi</dt><dd>${Math.round(W.tmin)}° / ${Math.round(W.tmax)}°</dd><dt>Umidità</dt><dd>${W.hum}%</dd><dt>Pressione</dt><dd>${W.pressure} hPa</dd><dt>Alba · Tramonto</dt><dd>${W.sunrise} · ${W.sunset}</dd>`;
+    const rmax = Math.max(...W.rain.map(r=>r[1]));
+    $("wx-rmax").textContent = "massimo "+rmax+"%"; $("wx-rmax").style.color = lvl(rmax,20,50)||"var(--green)";
+    $("wx-rain").innerHTML = W.rain.map(r=>`<div title="${r[0]} · ${r[1]}% · ${r[2]}°" style="height:${Math.max(3,r[1])}%;${lvl(r[1],20,50)?"background:"+lvl(r[1],20,50):""}"></div>`).join("");
+    $("wx-rain-l").innerHTML = W.rain.map((r,i)=>`<span>${i%2?"":r[0].slice(0,2)}</span>`).join("");
+    $("wx-ts").textContent = "agg. "+new Date(W.ts*1000).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+  }
+  $("foot").textContent = "Collegato · aggiornamento ogni 2 s · "+(S.hostname||"");
+}
+
+// navigazione laterale
+document.querySelectorAll("[data-go]").forEach(a=>a.onclick=()=>$(a.dataset.go).scrollIntoView({behavior:"smooth",block:"start"}));
+
+// pulsanti con password
+const PWKEY = "console-andreaserver-pw";
+function getPw(){ try{ return sessionStorage.getItem(PWKEY)||""; }catch(e){ return ""; } }
+function setPw(v){ try{ v ? sessionStorage.setItem(PWKEY,v) : sessionStorage.removeItem(PWKEY); }catch(e){} }
+function ask(title, msg, needPw){
+  return new Promise(res=>{
+    $("dlg-t").textContent = title; $("dlg-msg").textContent = msg||"";
+    $("dlg-pw").style.display = needPw ? "" : "none"; $("dlg-pw").value = "";
+    const dlg = $("dlg"); dlg.showModal(); if(needPw) $("dlg-pw").focus();
+    const done = v => { dlg.close(); $("dlg-ok").onclick = $("dlg-no").onclick = null; res(v); };
+    $("dlg-ok").onclick = ()=>done(needPw ? $("dlg-pw").value : true);
+    $("dlg-no").onclick = ()=>done(null);
+    $("dlg-pw").onkeydown = e=>{ if(e.key==="Enter") $("dlg-ok").click(); };
+  });
+}
+async function run(btn){
+  const act = btn.dataset.act;
+  if(btn.dataset.ask && !(await ask("Conferma", btn.dataset.ask, false))) return;
+  let pw = getPw();
+  if(!pw){ pw = await ask("Autorizzazione", "Inserisci la password della console", true); if(!pw) return; }
+  document.querySelectorAll("[data-act]").forEach(b=>b.disabled=true);
+  $("out").textContent = "▶ " + btn.textContent + " in corso…";
+  try{
+    const r = await fetch("/api/action",{method:"POST",headers:{"Content-Type":"application/json","X-Password":pw},body:JSON.stringify({action:act})});
+    const j = await r.json();
+    if(r.status===401){ setPw(""); $("out").textContent = "✖ Password errata"; }
+    else { setPw(pw); $("out").textContent = (j.ok?"✔ ":"✖ ") + (j.message||j.error) + (j.output ? "\n\n"+j.output.trim().split("\n").slice(-6).join("\n") : ""); }
+  }catch(e){ $("out").textContent = "✖ Errore di collegamento"; }
+  document.querySelectorAll("[data-act]").forEach(b=>b.disabled=false);
+  load();
+}
+document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>run(b));
+$("logout").onclick = ()=>{ setPw(""); $("out").textContent = "Password dimenticata su questo dispositivo."; };
+
+load(); setInterval(load, 2000);
+window.addEventListener("resize", load);
+</script>
+</body>
+</html>

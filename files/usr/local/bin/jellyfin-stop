@@ -1,0 +1,3 @@
+#!/bin/bash
+# K = ferma Jellyfin
+systemctl stop jellyfin && echo -e "\e[91m■\e[0m Jellyfin fermato" || echo "Errore nel fermare Jellyfin"
